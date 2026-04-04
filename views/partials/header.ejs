@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Apply saved theme before render to avoid flash -->
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('mimir-theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <img src="/images/the-standard-logo.png" alt="The Standard" class="logo-img" />
+        <span>Media Search</span>
+      </a>
+
+      <nav class="site-nav">
+        <a href="/" class="nav-link <%= (typeof activeTab === 'undefined' || activeTab !== 'changelog') ? 'active' : '' %>">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span>ค้นหาสื่อ</span>
+        </a>
+        <a href="/changelog" class="nav-link <%= (typeof activeTab !== 'undefined' && activeTab === 'changelog') ? 'active' : '' %>">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="1" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span>Change Logs</span>
+        </a>
+
+        <!-- User info + logout -->
+        <% if (typeof user !== 'undefined' && user) { %>
+          <div class="user-chip">
+            <% if (user.photo) { %>
+              <img src="<%= user.photo %>" alt="<%= user.name %>" referrerpolicy="no-referrer" />
+            <% } %>
+            <span><%= user.name || user.email %></span>
+          </div>
+          <a href="/logout" class="btn-logout">ออกจากระบบ</a>
+        <% } %>
+
+        <!-- Dark / Light mode toggle -->
+        <button class="theme-toggle" id="themeToggle" aria-label="เปลี่ยนธีม">
+          <!-- Moon icon: shown in light mode (click → go dark) -->
+          <svg class="theme-icon theme-icon--dark" width="17" height="17" viewBox="0 0 24 24" fill="none">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Sun icon: shown in dark mode (click → go light) -->
+          <svg class="theme-icon theme-icon--light" width="17" height="17" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+  <main class="main-content">

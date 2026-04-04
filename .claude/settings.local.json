@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:docs.mimir.global)",
+      "WebFetch(domain:onemimir.com)",
+      "WebFetch(domain:docs.qibb.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:mimir.mjoll.no)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm install:*)",
+      "Read(//usr/local/bin/**)",
+      "Bash(/opt/homebrew/bin/npm --version)",
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.nvm/versions/node/$\\(ls ~/.nvm/versions/node/)",
+      "Bash(mdfind \"kMDItemFSName == 'node'\")",
+      "Bash(npm --version)",
+      "Bash(node app.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "WebFetch(domain:apac.mjoll.no)",
+      "Bash(curl -s https://apac.mjoll.no)",
+      "Bash(curl -s \"https://apac.mjoll.no/assets/index-DMq4QirT.js\")",
+      "Bash(grep -o 'userPool[A-Za-z]*[\": ]*[A-Za-z0-9_-]\\\\{5,\\\\}')",
+      "Bash(grep -o 'cognito[^,{}\\\\[\\\\]]\\\\{0,80\\\\}')",
+      "Bash(grep -oP '\\(?<=cognito\\)[^a-z][^,;]{0,200}')",
+      "Bash(grep -o 'AuthenticateWithPassword.\\\\{0,300\\\\}' /tmp/mjoll_bundle.js)",
+      "Bash(grep -Eo 'AuthenticateWithPassword.{0,300}' /tmp/mjoll_bundle.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{redirect_url}\" https://apac.mjoll.no/api/v1/auth)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://apac.mjoll.no/api/v1/)",
+      "Bash(curl -s https://apac.mjoll.no/.well-known/openid-configuration)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}

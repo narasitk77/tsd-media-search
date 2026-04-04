@@ -1,0 +1,56 @@
+<%- include('partials/header', { activeTab: 'changelog' }) %>
+
+<div class="cl-page">
+  <div class="cl-header">
+    <h1 class="cl-title">Change Logs</h1>
+    <p class="cl-subtitle">ประวัติการอัปเดตและปรับปรุงระบบ Mimir Media Search</p>
+  </div>
+
+  <div class="cl-timeline">
+    <% entries.forEach(function(release, ri) { %>
+      <div class="cl-release">
+
+        <div class="cl-release-meta">
+          <span class="cl-version">v<%= release.version %></span>
+          <span class="cl-date">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="2" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M5 1v2M11 1v2M1 6h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <%= new Date(release.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+          </span>
+          <% if (ri === 0) { %><span class="cl-latest-badge">ล่าสุด</span><% } %>
+        </div>
+
+        <div class="cl-release-body">
+          <h2 class="cl-release-title"><%= release.title %></h2>
+          <ul class="cl-entries">
+            <% release.entries.forEach(function(entry) { %>
+              <li class="cl-entry cl-entry--<%= entry.type %>">
+                <span class="cl-entry-badge cl-entry-badge--<%= entry.type %>">
+                  <% if (entry.type === 'added') { %>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    Added
+                  <% } else if (entry.type === 'fixed') { %>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Fixed
+                  <% } else if (entry.type === 'improved') { %>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 9l4-6 4 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Improved
+                  <% } else { %>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.5"/></svg>
+                    <%= entry.type %>
+                  <% } %>
+                </span>
+                <span class="cl-entry-text"><%= entry.text %></span>
+              </li>
+            <% }); %>
+          </ul>
+        </div>
+
+      </div>
+    <% }); %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

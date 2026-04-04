@@ -1,0 +1,406 @@
+<%- include('partials/header') %>
+
+<%
+// Detect if any advanced filter is active
+var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTranscript ||
+  searchLabels || searchMetadata || searchFile || searchDetectedText ||
+  dateFrom || dateTo || durationMin || durationMax || locationFilter ||
+  sortBy !== 'date' || sortOrder !== 'desc' || pageSize !== 24;
+%>
+
+<section class="hero <%= results !== null ? 'hero--compact' : '' %>">
+  <% if (results === null) { %>
+    <div class="hero-text">
+      <h1>ค้นหาสื่อจาก Mimir</h1>
+      <% if (stats && stats.total > 0) { %>
+        <p class="hero-stats">
+          คลังทั้งหมด
+          <strong><%= stats.images.toLocaleString() %></strong> รูปภาพ
+          &nbsp;·&nbsp;
+          <strong><%= stats.videos.toLocaleString() %></strong> วีดิโอ
+        </p>
+      <% } else { %>
+        <p>ค้นหารูปภาพและวีดิโอจากคลังสื่อขององค์กร</p>
+      <% } %>
+    </div>
+  <% } %>
+
+  <form class="search-form" id="searchForm" action="/search" method="GET" role="search">
+
+    <!-- Main search bar -->
+    <div class="search-bar">
+      <input
+        type="text"
+        name="q"
+        id="searchInput"
+        class="search-input"
+        placeholder="พิมพ์คำค้นหาทั่วไป..."
+        value="<%= query %>"
+        autofocus
+        autocomplete="off"
+      />
+      <button type="submit" class="search-btn" aria-label="ค้นหา">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/>
+          <path d="M13 13l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Controls row: type tabs + advanced toggle -->
+    <div class="search-controls">
+      <div class="filter-tabs" role="group" aria-label="ประเภทสื่อ">
+        <button type="submit" class="filter-tab <%= mediaType === 'all'   ? 'active' : '' %>" name="type" value="all">ทั้งหมด</button>
+        <button type="submit" class="filter-tab <%= mediaType === 'image' ? 'active' : '' %>" name="type" value="image">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="5.5" cy="5.5" r="1.5" fill="currentColor"/>
+            <path d="M1 11l4-4 3 3 2-2 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          รูปภาพ
+        </button>
+        <button type="submit" class="filter-tab <%= mediaType === 'video' ? 'active' : '' %>" name="type" value="video">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="2" width="10" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M11 6l4-2v8l-4-2V6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+          วีดิโอ
+        </button>
+      </div>
+
+      <button type="button" class="adv-toggle <%= hasAdvanced ? 'open' : '' %>" id="advToggle"
+              aria-expanded="<%= hasAdvanced ? 'true' : 'false' %>" aria-controls="advPanel">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        ค้นหาขั้นสูง
+        <svg class="adv-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Advanced Search Panel -->
+    <div class="adv-panel" id="advPanel" <%= !hasAdvanced ? 'hidden' : '' %>>
+
+      <!-- Section: ค้นหาในฟิลด์เฉพาะ -->
+      <div class="adv-section">
+        <div class="adv-section-title">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          ค้นหาในฟิลด์เฉพาะ
+        </div>
+        <div class="adv-fields-grid">
+
+          <div class="adv-field">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Titles
+            </label>
+            <input type="text" name="searchTitle" class="adv-input" placeholder="ค้นหาในชื่อ..." value="<%= searchTitle %>">
+          </div>
+
+          <div class="adv-field">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              People
+            </label>
+            <input type="text" name="searchPeople" class="adv-input" placeholder="ค้นหาชื่อบุคคล..." value="<%= searchPeople %>">
+          </div>
+
+          <div class="adv-field">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v10H2z" stroke="currentColor" stroke-width="1.5" rx="1"/><path d="M5 7h6M5 10h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Descriptions
+            </label>
+            <input type="text" name="searchDescription" class="adv-input" placeholder="ค้นหาในคำอธิบาย..." value="<%= searchDescription %>">
+          </div>
+
+          <div class="adv-field">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Transcripts
+            </label>
+            <input type="text" name="searchTranscript" class="adv-input" placeholder="ค้นหาใน transcript..." value="<%= searchTranscript %>">
+          </div>
+
+          <div class="adv-field">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h7M3 12h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="10" y="9" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+              Labels
+            </label>
+            <input type="text" name="searchLabels" class="adv-input" placeholder="ค้นหา label..." value="<%= searchLabels %>">
+          </div>
+
+          <div class="adv-field">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2h12v12H2z" stroke="currentColor" stroke-width="1.5" rx="1"/><path d="M5 5h6M5 8h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Metadata
+            </label>
+            <input type="text" name="searchMetadata" class="adv-input" placeholder="ค้นหาใน metadata..." value="<%= searchMetadata %>">
+          </div>
+
+          <div class="adv-field">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 2h8l2 3H2l2-3zM2 5v9h12V5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              File
+            </label>
+            <input type="text" name="searchFile" class="adv-input" placeholder="ค้นหาชื่อไฟล์..." value="<%= searchFile %>">
+          </div>
+
+          <div class="adv-field">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Detected text
+            </label>
+            <input type="text" name="searchDetectedText" class="adv-input" placeholder="ค้นหาข้อความที่ detect..." value="<%= searchDetectedText %>">
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="adv-divider"></div>
+
+      <!-- Section: ตัวกรอง -->
+      <div class="adv-section">
+        <div class="adv-section-title">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 8h6M8 12h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          ตัวกรอง
+        </div>
+        <div class="adv-filters-grid">
+
+          <!-- Date range (Media Created) -->
+          <div class="adv-field adv-field--wide">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 1v2M11 1v2M1 6h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              วันที่สร้างสื่อ (Media Created)
+            </label>
+            <div class="adv-date-range">
+              <input type="date" name="dateFrom" class="adv-input" value="<%= dateFrom %>" placeholder="ตั้งแต่">
+              <span class="adv-date-sep">–</span>
+              <input type="date" name="dateTo" class="adv-input" value="<%= dateTo %>" placeholder="ถึง">
+            </div>
+          </div>
+
+          <!-- Duration range -->
+          <div class="adv-field adv-field--wide">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              ความยาว (วินาที)
+            </label>
+            <div class="adv-range-pair">
+              <input type="number" name="durationMin" class="adv-input adv-input--num" placeholder="นาที (วินาที)" min="0" value="<%= durationMin %>">
+              <span class="adv-date-sep">–</span>
+              <input type="number" name="durationMax" class="adv-input adv-input--num" placeholder="สูงสุด (วินาที)" min="0" value="<%= durationMax %>">
+            </div>
+            <p class="adv-hint">สำหรับวีดิโอ — ใส่เป็นวินาที เช่น 60 = 1 นาที</p>
+          </div>
+
+          <!-- Ingest location / path filter -->
+          <div class="adv-field adv-field--wide">
+            <label class="adv-label">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2h4l2 3H2V2zM2 5v9h12V5H8L6 2" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              Filter items by ingest location
+            </label>
+            <input type="text" name="locationFilter" class="adv-input" placeholder="เช่น PHOTOGRAPHER, VIDEO2026hires..." value="<%= locationFilter %>">
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="adv-divider"></div>
+
+      <!-- Section: การแสดงผล -->
+      <div class="adv-section">
+        <div class="adv-section-title">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M1 3h14M1 8h14M1 13h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          การแสดงผล
+        </div>
+        <div class="adv-display-grid">
+
+          <!-- Sort by -->
+          <div class="adv-field">
+            <label class="adv-label">เรียงโดย</label>
+            <div class="adv-select-wrap">
+              <select name="sortBy" class="adv-select">
+                <option value="date"  <%= sortBy === 'date'  ? 'selected' : '' %>>วันที่</option>
+                <option value="title" <%= sortBy === 'title' ? 'selected' : '' %>>ชื่อ</option>
+              </select>
+              <select name="sortOrder" class="adv-select">
+                <option value="desc" <%= sortOrder === 'desc' ? 'selected' : '' %>>ใหม่สุด / Z→A</option>
+                <option value="asc"  <%= sortOrder === 'asc'  ? 'selected' : '' %>>เก่าสุด / A→Z</option>
+              </select>
+            </div>
+            <p class="adv-hint">ใช้ได้เมื่อค้นหาด้วยคำสำคัญ</p>
+          </div>
+
+          <!-- Per page -->
+          <div class="adv-field">
+            <label class="adv-label">แสดงต่อหน้า</label>
+            <select name="pageSize" class="adv-select adv-select--sm">
+              <option value="24" <%= pageSize === 24 ? 'selected' : '' %>>24</option>
+              <option value="48" <%= pageSize === 48 ? 'selected' : '' %>>48</option>
+              <option value="96" <%= pageSize === 96 ? 'selected' : '' %>>96</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="adv-actions">
+        <button type="submit" class="btn btn--primary">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/>
+            <path d="M13 13l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          ค้นหา
+        </button>
+        <button type="button" class="btn btn--ghost" id="advReset">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8A5 5 0 1 1 8 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M1 6l2 2 2-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          ล้างตัวกรอง
+        </button>
+      </div>
+    </div>
+
+  </form>
+</section>
+
+<% if (error) { %>
+  <div class="alert alert--error" role="alert">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M9 5v5M9 13h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <%= error %>
+  </div>
+<% } %>
+
+<% if (results !== null) { %>
+  <div class="results-header">
+    <% if (results.length > 0) { %>
+      <div class="results-meta">
+        <p class="results-count" id="resultsCount">
+          พบ <strong><%= total.toLocaleString() %></strong> รายการ
+          <% if (typeof displayQuery !== 'undefined' && displayQuery) { %> สำหรับ "<strong><%= displayQuery %></strong>"<% } %>
+          <% if (!exhausted && fetched < total) { %>
+            <span class="results-note">(แสดง <%= fetched.toLocaleString() %> รายการล่าสุด)</span>
+          <% } %>
+          <span class="filter-count" id="filterCount" style="display:none"></span>
+        </p>
+
+        <!-- Active filter tags -->
+        <% var activeTags = [];
+           if (searchTitle)       activeTags.push({ label: 'Title: ' + searchTitle });
+           if (searchPeople)      activeTags.push({ label: 'People: ' + searchPeople });
+           if (searchDescription) activeTags.push({ label: 'Desc: ' + searchDescription });
+           if (searchTranscript)  activeTags.push({ label: 'Transcript: ' + searchTranscript });
+           if (searchLabels)      activeTags.push({ label: 'Labels: ' + searchLabels });
+           if (searchMetadata)    activeTags.push({ label: 'Meta: ' + searchMetadata });
+           if (searchFile)        activeTags.push({ label: 'File: ' + searchFile });
+           if (searchDetectedText)activeTags.push({ label: 'Detected: ' + searchDetectedText });
+           if (dateFrom || dateTo)activeTags.push({ label: (dateFrom||'...') + ' – ' + (dateTo||'...') });
+           if (durationMin)       activeTags.push({ label: '≥ ' + durationMin + 's' });
+           if (durationMax)       activeTags.push({ label: '≤ ' + durationMax + 's' });
+           if (locationFilter)    activeTags.push({ label: 'Location: ' + locationFilter });
+           if (sortBy !== 'date' || sortOrder !== 'desc') activeTags.push({ label: (sortBy==='title'?'ชื่อ':'วันที่') + ' ' + (sortOrder==='asc'?'↑':'↓') });
+        %>
+        <% if (activeTags.length > 0) { %>
+          <div class="active-filters">
+            <% activeTags.forEach(function(tag) { %>
+              <span class="active-filter-tag"><%= tag.label %></span>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+    <% } else if (!error) { %>
+      <p class="results-count">ไม่พบสื่อ<% if (typeof displayQuery !== 'undefined' && displayQuery) { %> สำหรับ "<strong><%= displayQuery %></strong>"<% } %></p>
+    <% } %>
+  </div>
+
+  <% if (results.length > 0) { %>
+    <div class="media-grid" id="mediaGrid">
+      <% results.forEach(function(asset) { %>
+        <div class="media-card"
+             data-id="<%= asset.id %>"
+             data-type="<%= asset.mediaType %>"
+             tabindex="0"
+             role="button"
+             aria-label="<%= asset.title %>">
+          <div class="card-thumb">
+            <img
+              src="/proxy/thumbnail/<%= asset.id %>"
+              alt="<%= asset.title %>"
+              loading="lazy"
+              onerror="this.src='/images/placeholder.svg'"
+            />
+            <% if (asset.mediaType === 'video') { %>
+              <div class="card-play-badge">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                  <circle cx="20" cy="20" r="19" fill="rgba(0,0,0,0.55)"/>
+                  <path d="M16 13l14 7-14 7V13z" fill="#fff"/>
+                </svg>
+              </div>
+              <% if (asset.duration) { %>
+                <span class="card-duration"><%= formatDuration(asset.duration) %></span>
+              <% } %>
+            <% } %>
+            <div class="card-type-badge card-type-badge--<%= asset.mediaType %>">
+              <%= asset.mediaType === 'video' ? 'Video' : 'Image' %>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="card-title"><%= asset.title %></p>
+            <div class="card-meta-row">
+              <% if (asset.category) { %><span class="card-category"><%= asset.category %></span><% } %>
+              <% if (asset.modified || asset.created) { %>
+                <span class="card-date"><%= new Date(asset.modified || asset.created).toLocaleDateString('th-TH', {year:'numeric',month:'short',day:'numeric'}) %></span>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+    <%
+      // Build pagination base URL preserving all params
+      function encP(v) { return v ? encodeURIComponent(v) : ''; }
+      var pb = '/search?q=' + encP(query)
+        + '&type=' + mediaType
+        + (searchTitle       ? '&searchTitle='       + encP(searchTitle)       : '')
+        + (searchPeople      ? '&searchPeople='      + encP(searchPeople)      : '')
+        + (searchDescription ? '&searchDescription=' + encP(searchDescription) : '')
+        + (searchTranscript  ? '&searchTranscript='  + encP(searchTranscript)  : '')
+        + (searchLabels      ? '&searchLabels='      + encP(searchLabels)      : '')
+        + (searchMetadata    ? '&searchMetadata='    + encP(searchMetadata)    : '')
+        + (searchFile        ? '&searchFile='        + encP(searchFile)        : '')
+        + (searchDetectedText? '&searchDetectedText='+ encP(searchDetectedText): '')
+        + (dateFrom          ? '&dateFrom='          + encP(dateFrom)          : '')
+        + (dateTo            ? '&dateTo='            + encP(dateTo)            : '')
+        + (durationMin       ? '&durationMin='       + durationMin             : '')
+        + (durationMax       ? '&durationMax='       + durationMax             : '')
+        + (locationFilter    ? '&locationFilter='    + encP(locationFilter)    : '')
+        + (sortBy    !== 'date' ? '&sortBy='    + sortBy    : '')
+        + (sortOrder !== 'desc' ? '&sortOrder=' + sortOrder : '')
+        + (pageSize  !== 24    ? '&pageSize='   + pageSize  : '');
+    %>
+
+    <% if (totalPages > 1) { %>
+      <nav class="pagination" aria-label="หน้า">
+        <% if (page > 1) { %>
+          <a href="<%= pb %>&page=<%= page - 1 %>" class="page-btn">&larr; ก่อนหน้า</a>
+        <% } %>
+        <span class="page-info">หน้า <%= page %> / <%= totalPages.toLocaleString() %></span>
+        <% if (page < totalPages) { %>
+          <a href="<%= pb %>&page=<%= page + 1 %>" class="page-btn">ถัดไป &rarr;</a>
+        <% } %>
+      </nav>
+    <% } %>
+  <% } %>
+<% } %>
+
+<%- include('partials/footer') %>

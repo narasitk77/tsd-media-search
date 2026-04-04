@@ -1,0 +1,111 @@
+[
+  {
+    "version": "1.8.0",
+    "date": "2026-04-04",
+    "title": "Google OAuth Login + Activity Logging",
+    "entries": [
+      { "type": "added", "text": "ระบบ Login ด้วย Google Workspace (@thestandard.co) — ตรวจสอบ domain ฝั่ง server" },
+      { "type": "added", "text": "Session-based authentication (8 ชั่วโมง) เก็บใน SQLite" },
+      { "type": "added", "text": "แสดงชื่อ-รูปโปรไฟล์ Google และปุ่ม 'ออกจากระบบ' บน header" },
+      { "type": "added", "text": "Activity Log บันทึก: login, logout, search (พร้อม filter ทั้งหมด), view asset, download" },
+      { "type": "added", "text": "ทุก route ต้อง login ก่อนใช้งาน — redirect อัตโนมัติ" }
+    ]
+  },
+  {
+    "version": "1.7.0",
+    "date": "2026-04-04",
+    "title": "รีแบรนด์ Header — โลโก้ The Standard และชื่อ Media Search",
+    "entries": [
+      { "type": "improved", "text": "เปลี่ยนโลโก้เป็น The Standard logo (PNG)" },
+      { "type": "improved", "text": "เปลี่ยนชื่อเว็บจาก 'Mimir Media Search' เป็น 'Media Search'" },
+      { "type": "improved", "text": "Header bar เปลี่ยนเป็นสีขาวตลอดเวลา (ทั้ง Light และ Dark mode)" }
+    ]
+  },
+  {
+    "version": "1.6.0",
+    "date": "2026-04-04",
+    "title": "Dark Mode และการแสดงผล Thumbnail แบบ Masonry",
+    "entries": [
+      { "type": "added", "text": "ปุ่มสลับ Dark / Light Mode บนแถบเมนูบนสุด (ไอคอนพระจันทร์/ดวงอาทิตย์)" },
+      { "type": "added", "text": "จำธีมที่เลือกไว้ใน localStorage — โหลดหน้าใหม่ไม่ flash ขาว" },
+      { "type": "improved", "text": "เปลี่ยน thumbnail grid เป็น CSS Masonry columns (columns: 5 180px)" },
+      { "type": "fixed", "text": "ภาพแนวตั้งแสดงผลแนวตั้ง ภาพแนวนอนแสดงผลแนวนอน — ไม่ crop อีกต่อไป" }
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2025-06-01",
+    "title": "เปิดตัวระบบ Mimir Media Search",
+    "entries": [
+      { "type": "added", "text": "สร้างเว็บไซต์ Internal สำหรับค้นหาสื่อจาก Mimir DAM" },
+      { "type": "added", "text": "โครงสร้าง MVC ด้วย Node.js / Express.js / EJS" },
+      { "type": "added", "text": "Cognito SRP Authentication (amazon-cognito-identity-js) เพื่อเชื่อมต่อ API โดยไม่ต้องมีบัญชี Mimir" },
+      { "type": "added", "text": "หน้าค้นหาหลัก พร้อมแสดงจำนวนสื่อทั้งหมดในคลัง (images / videos)" },
+      { "type": "added", "text": "แสดงผลลัพธ์เป็น grid card พร้อม thumbnail" }
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "date": "2025-06-01",
+    "title": "แก้ไขการค้นหาและการแสดงตัวอย่างสื่อ",
+    "entries": [
+      { "type": "fixed", "text": "แก้ parameter ค้นหาจาก query= เป็น searchString= ตามที่ Mimir API กำหนด" },
+      { "type": "fixed", "text": "แก้ parameter ขนาดหน้าจาก size= เป็น itemsPerPage=" },
+      { "type": "fixed", "text": "แก้ format Auth Header จาก 'Bearer {token}' เป็น '{token}' ตรงๆ (x-mimir-cognito-id-token)" },
+      { "type": "added", "text": "Thumbnail Proxy Route (/proxy/thumbnail/:id) เพื่อดึง presigned S3 URL ใหม่ทุกครั้ง" },
+      { "type": "added", "text": "Modal แสดงตัวอย่างสื่อ — video player สำหรับวีดิโอ, full-size image สำหรับรูปภาพ" },
+      { "type": "added", "text": "ปุ่มดาวน์โหลด Hi-Res (highResUrl) แทน web-quality proxy" }
+    ]
+  },
+  {
+    "version": "1.2.0",
+    "date": "2025-06-01",
+    "title": "แก้ปัญหาผลการค้นหาไม่ครอบคลุมเนื้อหาจริง",
+    "entries": [
+      { "type": "fixed", "text": "ผลลัพธ์ถูก folder ครอบงำ — แก้ด้วยการ iterate batch ทีละ 500 รายการ กรองเฉพาะ image/video" },
+      { "type": "improved", "text": "เพิ่ม MAX_SCAN = 5,000 รายการ เพื่อข้ามผ่าน folder/timeline และดึงสื่อจริงออกมา" },
+      { "type": "added", "text": "แสดง filter tab (ทั้งหมด / รูปภาพ / วีดิโอ) พร้อม badge แสดงจำนวน" },
+      { "type": "added", "text": "แสดงประเภทสื่อ badge (Image/Video) บนการ์ดทุกใบ" },
+      { "type": "added", "text": "แสดงความยาววีดิโอ (duration badge) บนการ์ด" }
+    ]
+  },
+  {
+    "version": "1.3.0",
+    "date": "2025-06-02",
+    "title": "ทะลุข้อจำกัด 10,000 รายการของ Mimir API",
+    "entries": [
+      { "type": "fixed", "text": "ค้นพบว่า Mimir API ใช้ Elasticsearch และมี hard cap ที่ 10,000 รายการ (from + itemsPerPage ≤ 9,998)" },
+      { "type": "added", "text": "ค้นพบ Scroll API (scroll=true) ที่คืน mScrollId cursor — ไม่มีขีดจำกัด สามารถดึงได้ครบ 347,081 รายการ" },
+      { "type": "improved", "text": "เปลี่ยน browse mode ไปใช้ Scroll API — จาก 10,000 เป็น 347,081 รายการ" },
+      { "type": "added", "text": "Scroll result cache (5 นาที) เพื่อไม่ต้องดึงซ้ำเมื่อ page เดิม" },
+      { "type": "improved", "text": "แสดงข้อความ '(แสดง X รายการล่าสุด)' แทนข้อความ API cap เดิม" }
+    ]
+  },
+  {
+    "version": "1.4.0",
+    "date": "2025-06-02",
+    "title": "Advanced Search — เพิ่มตัวกรองขั้นสูงแบบ Mimir",
+    "entries": [
+      { "type": "added", "text": "Advanced Search panel — เปิด/ปิดได้ด้วยปุ่ม 'ค้นหาขั้นสูง'" },
+      { "type": "added", "text": "ค้นหาเฉพาะฟิลด์: Titles, People, Descriptions, Transcripts, Labels, Metadata, File, Detected text" },
+      { "type": "added", "text": "ตัวกรองช่วงวันที่สร้างสื่อ (Media Created from–to)" },
+      { "type": "added", "text": "ตัวกรองความยาววีดิโอ (Duration min–max วินาที)" },
+      { "type": "added", "text": "ตัวกรอง Ingest Location (กรองตาม path/folder ที่ ingest)" },
+      { "type": "added", "text": "เรียงผลลัพธ์ตามวันที่หรือชื่อ (ascending/descending)" },
+      { "type": "added", "text": "เลือกจำนวนผลลัพธ์ต่อหน้า (24 / 48 / 96)" },
+      { "type": "added", "text": "แสดง Active filter tags ใต้ผลลัพธ์" },
+      { "type": "added", "text": "ปุ่ม 'ล้างตัวกรอง' reset ทุก field พร้อมค้นหาใหม่" },
+      { "type": "improved", "text": "แสดงวันที่บนการ์ดแต่ละใบ (keyword search mode)" }
+    ]
+  },
+  {
+    "version": "1.5.0",
+    "date": "2025-06-02",
+    "title": "เพิ่มหน้า Change Logs",
+    "entries": [
+      { "type": "added", "text": "Tab 'Change Logs' ในเมนูบนสุด" },
+      { "type": "added", "text": "หน้า Change Logs แสดงประวัติการอัปเดตทั้งหมดตั้งแต่เริ่มต้นโปรเจกต์" },
+      { "type": "added", "text": "ระบบอัปเดต changelog อัตโนมัติทุกครั้งที่มีการแก้ไข" }
+    ]
+  }
+]
