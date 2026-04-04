@@ -18,6 +18,9 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
+// Trust Railway's reverse proxy so secure cookies + OAuth redirects work correctly
+app.set('trust proxy', 1);
+
 // ── Security headers (helmet) ─────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: {
