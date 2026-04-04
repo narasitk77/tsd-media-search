@@ -121,20 +121,6 @@
   object-fit: cover;
   border: 1.5px solid #e2e6ea;
 }
-.user-chip span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.btn-logout {
-  font-size: 0.8rem;
-  color: #6b7280;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 4px 10px;
-  background: transparent;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.18s ease;
-  white-space: nowrap;
-}
-.btn-logout:hover { border-color: #dc2626; color: #dc2626; text-decoration: none; }
 
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -162,22 +148,24 @@ a:hover { text-decoration: underline; }
 .header-inner {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 16px;
   height: 56px;
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   font-weight: 600;
   font-size: 1rem;
   color: #1a1d23;
+  flex-shrink: 0;
 }
 .logo:hover { text-decoration: none; }
 .logo-img {
-  height: 32px;
+  height: 28px;
   width: auto;
   flex-shrink: 0;
   display: block;
@@ -185,7 +173,7 @@ a:hover { text-decoration: underline; }
 .logo span {
   color: #1a1d23;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   letter-spacing: 0.01em;
 }
 
@@ -193,8 +181,9 @@ a:hover { text-decoration: underline; }
 .site-nav {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* ---------- Theme Toggle ---------- */
@@ -202,15 +191,15 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 1.5px solid #d1d5db;
   background: transparent;
   color: #6b7280;
   cursor: pointer;
   transition: all var(--transition);
-  margin-left: 6px;
+  margin-left: 4px;
   flex-shrink: 0;
 }
 .theme-toggle:hover {
@@ -219,25 +208,75 @@ a:hover { text-decoration: underline; }
   background: #f4f6f9;
 }
 .theme-icon { display: none; }
-.theme-icon--light { display: block; } /* show sun in dark mode */
-.theme-icon--dark  { display: none;  } /* show moon in light mode */
+.theme-icon--light { display: block; }
+.theme-icon--dark  { display: none;  }
 [data-theme="dark"] .theme-icon--light { display: none; }
 [data-theme="dark"] .theme-icon--dark  { display: block; }
 .nav-link {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: 50px;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: #6b7280;
   text-decoration: none;
   transition: all var(--transition);
+  white-space: nowrap;
 }
 .nav-link:hover { background: #f4f6f9; color: #1a1d23; text-decoration: none; }
 .nav-link.active { background: #1a1d23; color: #fff; }
 .nav-link.active:hover { background: #2d3139; }
+
+/* ---------- Header: User chip ---------- */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #4b5563;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+.user-chip img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #e2e6ea;
+  flex-shrink: 0;
+}
+.user-chip .user-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-logout {
+  font-size: 0.78rem;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 9px;
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-logout:hover { border-color: #dc2626; color: #dc2626; text-decoration: none; }
+
+/* Mobile: hide text labels to save space */
+@media (max-width: 600px) {
+  .logo span          { display: none; }
+  .nav-link span      { display: none; }
+  .nav-link           { padding: 7px 10px; }
+  .user-chip .user-name { display: none; }
+  .btn-logout         { padding: 4px 8px; font-size: 0.75rem; }
+  .header-inner       { padding: 0 12px; gap: 4px; }
+}
 
 /* ---------- Main ---------- */
 .main-content {

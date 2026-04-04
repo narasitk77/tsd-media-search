@@ -49,7 +49,7 @@
             <% if (user.photo) { %>
               <img src="<%= user.photo %>" alt="<%= user.name %>" referrerpolicy="no-referrer" />
             <% } %>
-            <span><%= user.name || user.email %></span>
+            <span class="user-name"><%= user.name || user.email %></span>
           </div>
           <a href="/logout" class="btn-logout">ออกจากระบบ</a>
         <% } %>
