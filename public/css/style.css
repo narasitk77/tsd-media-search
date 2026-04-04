@@ -72,7 +72,8 @@
   text-align: center;
   box-shadow: 0 4px 24px rgba(0,0,0,.08);
 }
-.login-logo img { height: 40px; width: auto; margin: 0 auto 20px; }
+.login-logo { margin-bottom: 28px; }
+.login-logo img { height: 72px; width: auto; margin: 0 auto; display: block; }
 .login-title { font-size: 1.5rem; font-weight: 700; color: #1a1d23; margin-bottom: 10px; }
 .login-desc { font-size: 0.9rem; color: #6b7280; line-height: 1.6; margin-bottom: 28px; }
 .login-error {
