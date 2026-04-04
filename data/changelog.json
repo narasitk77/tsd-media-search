@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.9.0",
+    "date": "2026-04-04",
+    "title": "Security Hardening ก่อน Production",
+    "entries": [
+      { "type": "added", "text": "Helmet.js — HTTP security headers (CSP, X-Frame-Options, HSTS, X-Content-Type-Options)" },
+      { "type": "added", "text": "Rate limiting: search 60 req/min, auth 20 req/15 min" },
+      { "type": "added", "text": "Input validation บน /asset/:id และ /proxy/thumbnail/:id (alphanumeric pattern, max 100 chars)" },
+      { "type": "improved", "text": "Session cookie: httpOnly=true, secure=true (production), sameSite=lax" },
+      { "type": "improved", "text": "Body size limit: 100kb เพื่อป้องกัน payload flooding" },
+      { "type": "fixed", "text": "ลบ hardcoded credentials ออกจาก config/mimir.js — ใช้ env vars เท่านั้น" },
+      { "type": "fixed", "text": "Error handler ไม่ส่ง stack trace กลับไปให้ client" }
+    ]
+  },
+  {
     "version": "1.8.0",
     "date": "2026-04-04",
     "title": "Google OAuth Login + Activity Logging",
