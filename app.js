@@ -6,7 +6,7 @@ require('express-async-errors');
 const express      = require('express');
 const path         = require('path');
 const session      = require('express-session');
-const SQLiteStore  = require('connect-sqlite3')(session);
+const MemoryStore  = require('memorystore')(session);
 const passport     = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
@@ -66,7 +66,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // ── Session ──────────────────────────────────────────────────
 app.use(session({
-  store:             new SQLiteStore({ db: 'sessions.db', dir: path.join(__dirname, 'data') }),
+  store:             new MemoryStore({ checkPeriod: 8 * 60 * 60 * 1000 }),
   secret:            process.env.SESSION_SECRET || 'mimir-internal-secret-change-me',
   resave:            false,
   saveUninitialized: false,
