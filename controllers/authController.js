@@ -8,6 +8,8 @@ function loginPage(req, res) {
     ? 'กรุณาเข้าสู่ระบบด้วยอีเมล @thestandard.co เท่านั้น'
     : req.query.error === 'fail'
     ? 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+    : req.query.error === 'suspended'
+    ? 'บัญชีของคุณถูกระงับ กรุณาติดต่อผู้ดูแลระบบ'
     : null;
   res.render('login', { title: 'เข้าสู่ระบบ — Media Search', error });
 }

@@ -98,4 +98,4 @@ function getStats() {
   };
 }
 
-module.exports = { log, recent, getStats };
+module.exports = { log, recent, readAll, getStats };

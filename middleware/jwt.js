@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const SECRET  = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'dev-jwt-secret';
 const COOKIE  = 'mimir_token';
-const TTL_SEC = 8 * 60 * 60; // 8 hours
+const TTL_SEC = 2 * 60 * 60; // 2 hours
 const isProd  = process.env.NODE_ENV === 'production';
 
 // Sign a JWT from user object

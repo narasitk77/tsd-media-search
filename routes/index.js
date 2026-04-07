@@ -9,6 +9,7 @@ const admin      = require('../controllers/adminController');
 const { requireAuth } = require('../middleware/auth');
 const { setToken, clearToken } = require('../middleware/jwt');
 const logModel   = require('../models/logModel');
+const userModel  = require('../models/userModel');
 
 const router = express.Router();
 
@@ -29,7 +30,14 @@ router.get('/auth/google',
 router.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login?error=fail' }),
   function (req, res) {
-    setToken(res, req.user);   // issue signed JWT cookie
+    const record = userModel.upsertOnLogin(req.user);
+    if (record.status === 'suspended') {
+      return req.logout(function () { res.redirect('/login?error=suspended'); });
+    }
+    req.user.canSearch   = record.canSearch;
+    req.user.canDownload = record.canDownload;
+    req.user.role        = record.role;
+    setToken(res, req.user);
     logModel.log(req.user.email, 'login', { name: req.user.name });
     const returnTo = req.session.returnTo || '/';
     delete req.session.returnTo;
@@ -45,6 +53,11 @@ router.get('/search',   controller.search);
 router.get('/changelog',     changelog.index);
 router.get('/api/changelog', changelog.api);
 router.get('/admin',    admin.requireAdmin, admin.dashboard);
+
+// ── Admin user management ─────────────────────────────────────
+router.post('/admin/users/add',             admin.requireAdmin, admin.addUser);
+router.post('/admin/users/:email/update',   admin.requireAdmin, admin.updateUser);
+router.post('/admin/users/:email/remove',   admin.requireAdmin, admin.removeUser);
 
 router.get('/proxy/thumbnail/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).end();

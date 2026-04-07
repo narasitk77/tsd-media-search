@@ -4,14 +4,25 @@
 
   <div class="admin-header">
     <div>
-      <h1 class="admin-title">Dashboard</h1>
-      <p class="admin-subtitle">สถิติการใช้งาน Media Search</p>
+      <h1 class="admin-title">Admin Console</h1>
+      <p class="admin-subtitle">จัดการผู้ใช้งานและดูสถิติการใช้งาน Media Search</p>
     </div>
     <div class="admin-refresh">
       <span class="admin-refresh-label">รีเฟรชใน <span id="refreshCountdown">30</span>s</span>
       <button class="btn btn--ghost btn--sm" onclick="location.reload()">รีเฟรชเดี๋ยวนี้</button>
     </div>
   </div>
+
+  <!-- Tabs -->
+  <div class="admin-tabs">
+    <a href="/admin?tab=overview"  class="admin-tab <%= tab === 'overview'  ? 'admin-tab--active' : '' %>">ภาพรวม</a>
+    <a href="/admin?tab=users"     class="admin-tab <%= tab === 'users'     ? 'admin-tab--active' : '' %>">ผู้ใช้งาน <span class="admin-tab-badge"><%= users.length %></span></a>
+    <a href="/admin?tab=activity"  class="admin-tab <%= tab === 'activity'  ? 'admin-tab--active' : '' %>">กิจกรรม</a>
+    <a href="/admin?tab=commits"   class="admin-tab <%= tab === 'commits'   ? 'admin-tab--active' : '' %>">Git Commits</a>
+  </div>
+
+  <!-- ── Tab: ภาพรวม ─────────────────────────────────────────── -->
+  <% if (tab === 'overview') { %>
 
   <!-- Summary cards -->
   <div class="admin-stats-grid">
@@ -65,7 +76,6 @@
   </div>
 
   <div class="admin-two-col">
-
     <!-- Top search queries -->
     <div class="admin-card">
       <h2 class="admin-card-title">
@@ -90,14 +100,14 @@
       <% } %>
     </div>
 
-    <!-- Users table -->
+    <!-- Active users from log -->
     <div class="admin-card">
       <h2 class="admin-card-title">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
           <circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/>
           <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-        ผู้ใช้งาน
+        ผู้ใช้งานที่ active
       </h2>
       <% if (stats.users.length === 0) { %>
         <p class="admin-empty">ยังไม่มีข้อมูล</p>
@@ -107,18 +117,18 @@
             <thead>
               <tr>
                 <th>อีเมล</th>
-                <th>ค้นหา</th>
-                <th>ดาวน์โหลด</th>
+                <th class="text-right">ค้นหา</th>
+                <th class="text-right">โหลด</th>
                 <th>ใช้งานล่าสุด</th>
               </tr>
             </thead>
             <tbody>
-              <% stats.users.forEach(function(u) { %>
+              <% stats.users.slice(0, 10).forEach(function(u) { %>
                 <tr>
                   <td class="admin-user-email"><%= u.email %></td>
                   <td class="admin-num"><%= u.searches %></td>
                   <td class="admin-num"><%= u.downloads %></td>
-                  <td class="admin-date"><%= new Date(u.lastSeen).toLocaleDateString('th-TH', {year:'numeric',month:'short',day:'numeric'}) %></td>
+                  <td class="admin-date"><%= u.lastSeen ? new Date(u.lastSeen).toLocaleDateString('th-TH', {month:'short',day:'numeric'}) : '-' %></td>
                 </tr>
               <% }); %>
             </tbody>
@@ -126,57 +136,257 @@
         </div>
       <% } %>
     </div>
-
   </div>
 
-  <!-- Recent activity -->
+  <% } %>
+
+  <!-- ── Tab: ผู้ใช้งาน ──────────────────────────────────────── -->
+  <% if (tab === 'users') { %>
+
   <div class="admin-card admin-card--full">
-    <h2 class="admin-card-title">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-      กิจกรรมล่าสุด
-    </h2>
-    <% if (stats.recentActivity.length === 0) { %>
-      <p class="admin-empty">ยังไม่มีข้อมูล</p>
-    <% } else { %>
-      <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr><th>เวลา</th><th>ผู้ใช้</th><th>Action</th><th>รายละเอียด</th></tr>
-          </thead>
-          <tbody>
-            <% stats.recentActivity.forEach(function(e) { %>
+    <div class="admin-actions-row">
+      <h2 class="admin-card-title" style="margin-bottom:0;border-bottom:none;padding-bottom:0">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        ผู้ใช้งานทั้งหมด (<%= users.length %>)
+      </h2>
+      <button class="btn btn--sm btn--primary" onclick="document.getElementById('addUserModal').style.display='flex'">+ เพิ่มผู้ใช้</button>
+    </div>
+    <div style="margin-top:18px; border-top:1px solid var(--border); padding-top:18px">
+      <% if (users.length === 0) { %>
+        <p class="admin-empty">ยังไม่มีผู้ใช้งาน</p>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table admin-table--users">
+            <thead>
               <tr>
-                <td class="admin-date" style="white-space:nowrap">
-                  <%= new Date(e.ts).toLocaleString('th-TH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) %>
-                </td>
-                <td class="admin-user-email"><%= e.user %></td>
-                <td><span class="admin-action-badge admin-action-badge--<%= e.action %>"><%= e.action %></span></td>
-                <td class="admin-detail">
-                  <% if (e.action === 'search' && e.detail) { %>
-                    <% var q = e.detail.q || ''; %>
-                    <% if (q) { %>"<strong><%= q %></strong>"<% } else { %><span style="color:var(--text-muted)">browse</span><% } %>
-                    <% if (e.detail.total !== undefined) { %> · <%= e.detail.total %> รายการ<% } %>
-                  <% } else if (e.action === 'view' && e.detail) { %>
-                    <%= e.detail.title || e.detail.assetId %>
-                  <% } else if (e.action === 'download' && e.detail) { %>
-                    <%= e.detail.title || e.detail.assetId %>
-                    <% if (e.detail.mediaType) { %><span class="admin-tag"><%= e.detail.mediaType %></span><% } %>
-                  <% } else if (e.action === 'login' && e.detail) { %>
-                    <%= e.detail.name || '' %>
-                  <% } %>
-                </td>
+                <th>ผู้ใช้</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>สิทธิ์</th>
+                <th class="text-right">Search</th>
+                <th class="text-right">Download</th>
+                <th>ใช้งานล่าสุด</th>
+                <th></th>
               </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-    <% } %>
+            </thead>
+            <tbody>
+              <% users.forEach(function(u) { %>
+                <tr>
+                  <td>
+                    <div class="admin-user-row">
+                      <% if (u.photo) { %>
+                        <img src="<%= u.photo %>" class="admin-user-avatar" alt="">
+                      <% } else { %>
+                        <div class="admin-user-avatar admin-user-avatar--placeholder"><%= (u.name || u.email).charAt(0).toUpperCase() %></div>
+                      <% } %>
+                      <div>
+                        <div class="admin-user-name"><%= u.name || '—' %></div>
+                        <div class="admin-user-email"><%= u.email %></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="admin-role-badge admin-role-badge--<%= u.role %>"><%= u.role %></span></td>
+                  <td><span class="admin-status-badge admin-status-badge--<%= u.status || 'active' %>"><%= u.status || 'active' %></span></td>
+                  <td>
+                    <div class="admin-perms">
+                      <span class="admin-perm <%= u.canSearch ? 'admin-perm--on' : 'admin-perm--off' %>">ค้นหา</span>
+                      <span class="admin-perm <%= u.canDownload ? 'admin-perm--on' : 'admin-perm--off' %>">โหลด</span>
+                    </div>
+                  </td>
+                  <td class="admin-num"><%= u.searchCount || 0 %></td>
+                  <td class="admin-num"><%= u.downloadCount || 0 %></td>
+                  <td class="admin-date"><%= u.lastSeen ? new Date(u.lastSeen).toLocaleDateString('th-TH', {year:'numeric',month:'short',day:'numeric'}) : '—' %></td>
+                  <td>
+                    <button class="btn btn--xs btn--ghost"
+                      onclick="openEditUser(
+                        '<%= encodeURIComponent(u.email) %>',
+                        '<%= u.role %>',
+                        '<%= u.status || 'active' %>',
+                        '<%= u.canSearch %>',
+                        '<%= u.canDownload %>'
+                      )">แก้ไข</button>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
   </div>
 
-  <!-- Git Commits -->
+  <!-- Add User Modal -->
+  <div class="admin-modal-backdrop" id="addUserModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="admin-modal">
+      <div class="admin-modal-header">
+        <h3>เพิ่มผู้ใช้งาน</h3>
+        <button class="admin-modal-close" onclick="document.getElementById('addUserModal').style.display='none'">✕</button>
+      </div>
+      <form method="POST" action="/admin/users/add" class="admin-modal-body">
+        <label class="admin-label">อีเมล (@thestandard.co)
+          <input class="admin-input" type="email" name="email" placeholder="name@thestandard.co" required>
+        </label>
+        <label class="admin-label">Role
+          <select class="admin-input" name="role">
+            <option value="user">user</option>
+            <option value="admin">admin</option>
+          </select>
+        </label>
+        <div class="admin-checkbox-row">
+          <label><input type="checkbox" name="canSearch" value="true" checked> ค้นหาได้</label>
+          <label><input type="checkbox" name="canDownload" value="true" checked> ดาวน์โหลดได้</label>
+        </div>
+        <div class="admin-modal-footer">
+          <button type="button" class="btn btn--ghost btn--sm" onclick="document.getElementById('addUserModal').style.display='none'">ยกเลิก</button>
+          <button type="submit" class="btn btn--primary btn--sm">เพิ่มผู้ใช้</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div class="admin-modal-backdrop" id="editUserModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="admin-modal">
+      <div class="admin-modal-header">
+        <h3>แก้ไขผู้ใช้งาน</h3>
+        <button class="admin-modal-close" onclick="document.getElementById('editUserModal').style.display='none'">✕</button>
+      </div>
+      <form id="editUserForm" method="POST" class="admin-modal-body">
+        <label class="admin-label">Role
+          <select class="admin-input" name="role" id="editRole">
+            <option value="user">user</option>
+            <option value="admin">admin</option>
+          </select>
+        </label>
+        <label class="admin-label">Status
+          <select class="admin-input" name="status" id="editStatus">
+            <option value="active">active</option>
+            <option value="suspended">suspended</option>
+            <option value="pending">pending</option>
+          </select>
+        </label>
+        <div class="admin-checkbox-row">
+          <label><input type="checkbox" name="canSearch" value="on" id="editCanSearch"> ค้นหาได้</label>
+          <label><input type="checkbox" name="canDownload" value="on" id="editCanDownload"> ดาวน์โหลดได้</label>
+        </div>
+        <div class="admin-modal-footer">
+          <form id="removeUserForm" method="POST" style="margin:0">
+            <button type="submit" class="btn btn--xs btn--danger" onclick="return confirm('ลบผู้ใช้นี้?')">ลบ</button>
+          </form>
+          <div style="display:flex;gap:8px;margin-left:auto">
+            <button type="button" class="btn btn--ghost btn--sm" onclick="document.getElementById('editUserModal').style.display='none'">ยกเลิก</button>
+            <button form="editUserForm" type="submit" class="btn btn--primary btn--sm">บันทึก</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% } %>
+
+  <!-- ── Tab: กิจกรรม ────────────────────────────────────────── -->
+  <% if (tab === 'activity') { %>
+
+  <div class="admin-card admin-card--full">
+    <div class="admin-actions-row">
+      <h2 class="admin-card-title" style="margin-bottom:0;border-bottom:none;padding-bottom:0">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        บันทึกกิจกรรม
+      </h2>
+      <form method="GET" action="/admin" style="display:flex;gap:8px;align-items:center">
+        <input type="hidden" name="tab" value="activity">
+        <select name="user" class="admin-input admin-input--sm" onchange="this.form.submit()">
+          <option value="">ทุกคน</option>
+          <% users.forEach(function(u) { %>
+            <option value="<%= u.email %>" <%= filterUser === u.email ? 'selected' : '' %>><%= u.email %></option>
+          <% }); %>
+        </select>
+        <% if (filterUser) { %>
+          <a href="/admin?tab=activity" class="btn btn--ghost btn--xs">ล้าง</a>
+        <% } %>
+      </form>
+    </div>
+    <div style="margin-top:18px; border-top:1px solid var(--border); padding-top:18px">
+      <%
+        var activityLogs = stats.recentActivity.filter(function(e) {
+          return !filterUser || e.user === filterUser;
+        });
+      %>
+      <% if (activityLogs.length === 0) { %>
+        <p class="admin-empty">ยังไม่มีข้อมูล</p>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>เวลา</th><th>ผู้ใช้</th><th>Action</th><th>รายละเอียด</th></tr>
+            </thead>
+            <tbody>
+              <% activityLogs.forEach(function(e) { %>
+                <tr>
+                  <td class="admin-date" style="white-space:nowrap">
+                    <%= new Date(e.ts).toLocaleString('th-TH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+                  </td>
+                  <td class="admin-user-email"><%= e.user %></td>
+                  <td><span class="admin-action-badge admin-action-badge--<%= e.action %>"><%= e.action %></span></td>
+                  <td class="admin-detail">
+                    <% if (e.action === 'search' && e.detail) { %>
+                      <% var q = e.detail.q || ''; %>
+                      <% if (q) { %>"<strong><%= q %></strong>"<% } else { %><span style="color:var(--text-muted)">browse</span><% } %>
+                      <% if (e.detail.total !== undefined) { %> · <%= e.detail.total %> รายการ<% } %>
+                    <% } else if (e.action === 'download' && e.detail) { %>
+                      <%= e.detail.title || e.detail.assetId %>
+                      <% if (e.detail.mediaType) { %><span class="admin-tag"><%= e.detail.mediaType %></span><% } %>
+                    <% } else if (e.action === 'login' && e.detail) { %>
+                      <%= e.detail.name || '' %>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+
+      <!-- Per-user download detail (when filtered) -->
+      <% if (filterUser) { %>
+        <%
+          var filteredUser = users.find(function(u) { return u.email === filterUser; });
+          var userDownloads = filteredUser && filteredUser.downloads ? filteredUser.downloads : [];
+        %>
+        <% if (userDownloads.length > 0) { %>
+          <h3 style="font-size:0.88rem;font-weight:600;margin:24px 0 12px;color:var(--text)">ประวัติดาวน์โหลดของ <%= filterUser %> (ล่าสุด <%= userDownloads.length %> รายการ)</h3>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>เวลา</th><th>ชื่อไฟล์</th><th>ประเภท</th></tr></thead>
+              <tbody>
+                <% userDownloads.forEach(function(d) { %>
+                  <tr>
+                    <td class="admin-date" style="white-space:nowrap">
+                      <%= new Date(d.ts).toLocaleString('th-TH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+                    </td>
+                    <td style="font-size:0.82rem"><%= (d.detail && d.detail.title) || (d.detail && d.detail.assetId) || '—' %></td>
+                    <td><% if (d.detail && d.detail.mediaType) { %><span class="admin-tag"><%= d.detail.mediaType %></span><% } %></td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      <% } %>
+    </div>
+  </div>
+
+  <% } %>
+
+  <!-- ── Tab: Git Commits ─────────────────────────────────────── -->
+  <% if (tab === 'commits') { %>
+
   <div class="admin-card admin-card--full">
     <h2 class="admin-card-title">
       <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -214,6 +424,8 @@
     <% } %>
   </div>
 
+  <% } %>
+
 </div>
 
 <script>
@@ -225,6 +437,18 @@
     if (el) el.textContent = countdown;
     if (countdown <= 0) location.reload();
   }, 1000);
+
+  function openEditUser(encodedEmail, role, status, canSearch, canDownload) {
+    var decodedEmail = decodeURIComponent(encodedEmail);
+    var form = document.getElementById('editUserForm');
+    form.action = '/admin/users/' + encodedEmail + '/update';
+    document.getElementById('removeUserForm').action = '/admin/users/' + encodedEmail + '/remove';
+    document.getElementById('editRole').value = role;
+    document.getElementById('editStatus').value = status;
+    document.getElementById('editCanSearch').checked = canSearch === 'true';
+    document.getElementById('editCanDownload').checked = canDownload === 'true';
+    document.getElementById('editUserModal').style.display = 'flex';
+  }
 </script>
 
 <%- include('partials/footer') %>

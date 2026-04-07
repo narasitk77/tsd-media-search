@@ -1,5 +1,19 @@
 [
   {
+    "version": "2.1.0",
+    "date": "2026-04-07",
+    "title": "Admin Console — User Management & Activity Logs",
+    "entries": [
+      { "type": "added", "text": "Admin Console แบบ 4 แท็บ: ภาพรวม / ผู้ใช้งาน / กิจกรรม / Git Commits" },
+      { "type": "added", "text": "ระบบจัดการผู้ใช้: เพิ่ม / แก้ไข Role & สิทธิ์ / ระงับ / ลบ" },
+      { "type": "added", "text": "Auto-register ผู้ใช้เมื่อ Login ครั้งแรกด้วย Google OAuth" },
+      { "type": "added", "text": "บันทึก users ลง data/users.json — คงอยู่บน Railway Volume" },
+      { "type": "added", "text": "Tab กิจกรรม: ดู Log ของแต่ละคน, filter ตาม user, ดูประวัติดาวน์โหลด" },
+      { "type": "added", "text": "JWT token TTL ลดเหลือ 2 ชั่วโมง (เดิม 8 ชั่วโมง)" },
+      { "type": "added", "text": "บัญชีที่ถูก Suspend จะถูกบล็อกทันทีเมื่อ Login" }
+    ]
+  },
+  {
     "version": "2.0.0",
     "date": "2026-04-07",
     "title": "YouTube-Style UI + Recent Updates Landing Page",
