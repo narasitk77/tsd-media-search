@@ -424,7 +424,10 @@ async function getRecentFolders(days) {
       const item   = normaliseItem(raw);
       const dateMs = new Date(item.modified || item.created || 0).getTime();
       if (dateMs < cutoff) continue;
-      const folder = item.rootFolder || '(ไม่มีโฟลเดอร์)';
+      const parts2  = (item.sourcePath || '').split('/');
+      const folder  = parts2.length >= 2
+        ? parts2.slice(0, 2).join('/')
+        : (item.rootFolder || '(ไม่มีโฟลเดอร์)');
       if (!folderMap[folder]) folderMap[folder] = { folder, count: 0, latest: null };
       folderMap[folder].count++;
       const d = item.modified || item.created;

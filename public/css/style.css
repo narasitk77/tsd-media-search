@@ -249,12 +249,12 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
   transition: background var(--transition);
 }
-.hamburger:hover { background: #f4f6f9; }
+.hamburger:hover { background: var(--border); }
 .hamburger span {
   display: block;
   height: 2px;
   width: 100%;
-  background: #1a1d23;
+  background: var(--text);
   border-radius: 2px;
   transition: all 0.2s ease;
 }
