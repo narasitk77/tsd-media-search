@@ -124,11 +124,11 @@ if (advToggle && advPanel) {
     var isOpen = !advPanel.hasAttribute('hidden');
     if (isOpen) {
       advPanel.setAttribute('hidden', '');
-      advToggle.classList.remove('open');
+      advToggle.classList.remove('open', 'chip--active');
       advToggle.setAttribute('aria-expanded', 'false');
     } else {
       advPanel.removeAttribute('hidden');
-      advToggle.classList.add('open');
+      advToggle.classList.add('open', 'chip--active');
       advToggle.setAttribute('aria-expanded', 'true');
     }
   });

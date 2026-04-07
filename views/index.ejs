@@ -8,76 +8,60 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
   sortBy !== 'date' || sortOrder !== 'desc' || pageSize !== 24;
 %>
 
-<section class="hero <%= results !== null ? 'hero--compact' : '' %>">
-  <% if (results === null) { %>
-    <div class="hero-text">
-      <h1>ค้นหาสื่อจาก Mimir</h1>
-      <% if (stats && stats.total > 0) { %>
-        <p class="hero-stats">
-          คลังทั้งหมด
-          <strong><%= stats.images.toLocaleString() %></strong> รูปภาพ
-          &nbsp;·&nbsp;
-          <strong><%= stats.videos.toLocaleString() %></strong> วีดิโอ
-        </p>
-      <% } else { %>
-        <p>ค้นหารูปภาพและวีดิโอจากคลังสื่อขององค์กร</p>
-      <% } %>
-    </div>
-  <% } %>
+<!-- ── YouTube-style chips bar ───────────────────────────────── -->
+<%
+  var qEnc = query ? encodeURIComponent(query) : '';
+  var chipBase = '/search?q=' + qEnc;
+%>
+<div class="chips-bar-wrap">
+  <div class="chips-bar">
+    <a href="<%= chipBase %>&type=all"
+       class="chip <%= mediaType === 'all' ? 'chip--active' : '' %>">ทั้งหมด</a>
+    <a href="<%= chipBase %>&type=image"
+       class="chip <%= mediaType === 'image' ? 'chip--active' : '' %>">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="5.5" cy="5.5" r="1.5" fill="currentColor"/>
+        <path d="M1 11l4-4 3 3 2-2 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      รูปภาพ
+    </a>
+    <a href="<%= chipBase %>&type=video"
+       class="chip <%= mediaType === 'video' ? 'chip--active' : '' %>">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="2" width="10" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M11 6l4-2v8l-4-2V6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+      วีดิโอ
+    </a>
 
+    <div class="chips-divider"></div>
+
+    <button type="button" class="chip chip--adv <%= hasAdvanced ? 'chip--active' : '' %>" id="advToggle"
+            aria-expanded="<%= hasAdvanced ? 'true' : 'false' %>" aria-controls="advPanel">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+        <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      ค้นหาขั้นสูง
+    </button>
+  </div>
+</div>
+
+<!-- Stats bar (landing page only) -->
+<% if (results === null && stats && stats.total > 0) { %>
+  <p class="stats-bar">
+    คลังทั้งหมด
+    <strong><%= stats.images.toLocaleString() %></strong> รูปภาพ
+    &nbsp;·&nbsp;
+    <strong><%= stats.videos.toLocaleString() %></strong> วีดิโอ
+  </p>
+<% } %>
+
+<!-- Advanced filter form (hidden input for q + type, advanced panel) -->
+<section class="adv-section-wrap">
   <form class="search-form" id="searchForm" action="/search" method="GET" role="search">
-
-    <!-- Main search bar -->
-    <div class="search-bar">
-      <input
-        type="text"
-        name="q"
-        id="searchInput"
-        class="search-input"
-        placeholder="พิมพ์คำค้นหาทั่วไป..."
-        value="<%= query %>"
-        autocomplete="off"
-      />
-      <button type="submit" class="search-btn" aria-label="ค้นหา">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/>
-          <path d="M13 13l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Controls row: type tabs + advanced toggle -->
-    <div class="search-controls">
-      <div class="filter-tabs" role="group" aria-label="ประเภทสื่อ">
-        <button type="submit" class="filter-tab <%= mediaType === 'all'   ? 'active' : '' %>" name="type" value="all">ทั้งหมด</button>
-        <button type="submit" class="filter-tab <%= mediaType === 'image' ? 'active' : '' %>" name="type" value="image">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="5.5" cy="5.5" r="1.5" fill="currentColor"/>
-            <path d="M1 11l4-4 3 3 2-2 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          รูปภาพ
-        </button>
-        <button type="submit" class="filter-tab <%= mediaType === 'video' ? 'active' : '' %>" name="type" value="video">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <rect x="1" y="2" width="10" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M11 6l4-2v8l-4-2V6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-          </svg>
-          วีดิโอ
-        </button>
-      </div>
-
-      <button type="button" class="adv-toggle <%= hasAdvanced ? 'open' : '' %>" id="advToggle"
-              aria-expanded="<%= hasAdvanced ? 'true' : 'false' %>" aria-controls="advPanel">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        ค้นหาขั้นสูง
-        <svg class="adv-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
+    <input type="hidden" name="q" id="searchInput" value="<%= query %>">
+    <input type="hidden" name="type" value="<%= mediaType %>">
 
     <!-- Advanced Search Panel -->
     <div class="adv-panel" id="advPanel" <%= !hasAdvanced ? 'hidden' : '' %>>
@@ -268,6 +252,7 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
 
   </form>
 </section>
+<!-- /adv-section-wrap -->
 
 <% if (results === null && recentFolders && recentFolders.length > 0) { %>
 <section class="recent-section">
