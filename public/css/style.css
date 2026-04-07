@@ -710,6 +710,17 @@ a:hover { text-decoration: underline; }
   color: var(--text-muted);
   flex-shrink: 0;
 }
+.card-photographer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ---------- Pagination ---------- */
 .pagination {

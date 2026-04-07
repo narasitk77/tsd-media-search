@@ -72,13 +72,16 @@ function normaliseItem(raw) {
   const duration  = techData.technical_media_duration ? Math.round(techData.technical_media_duration / 1000) : null;
   const mimeType  = raw.mediaType || null;
 
-  const sourcePath = raw.ingestSourceFullPath || '';
-  const parts      = sourcePath.split('/');
-  const category   = parts.length > 2 ? parts[parts.length - 2] : null;
-  // root folder name (e.g. "PHOTOGRAPHER", "VIDEO2026hires")
-  const rootFolder = parts.length > 1 ? parts[0] : null;
+  const sourcePath   = raw.ingestSourceFullPath || '';
+  const parts        = sourcePath.split('/');
+  const category     = parts.length > 2 ? parts[parts.length - 2] : null;
+  const rootFolder   = parts.length > 1 ? parts[0] : null;
+  // Extract photographer name: path like "PHOTOGRAPHER/First Last/..."
+  const photographer = (parts[0] || '').toUpperCase() === 'PHOTOGRAPHER' && parts[1]
+    ? parts[1].trim()
+    : null;
 
-  return { id, mediaType, title, thumbnail: `/proxy/thumbnail/${id}`, modified, created, duration, fileSize: raw.mediaSize || null, category, mimeType, sourcePath, rootFolder };
+  return { id, mediaType, title, thumbnail: `/proxy/thumbnail/${id}`, modified, created, duration, fileSize: raw.mediaSize || null, category, mimeType, sourcePath, rootFolder, photographer };
 }
 
 function normaliseItemFull(raw) {
@@ -94,7 +97,8 @@ function normaliseItemFull(raw) {
     height:      techData.technical_video_height || techData.technical_image_height || null,
     fileType:    techData.technical_media_container_format || techData.technical_image_file_type || null,
     duration:    techData.technical_media_duration ? Math.round(techData.technical_media_duration / 1000) : base.duration,
-    sourcePath:  raw.ingestSourceFullPath || '',
+    sourcePath:    raw.ingestSourceFullPath || '',
+    photographer:  base.photographer,
   };
 }
 

@@ -113,6 +113,7 @@ function renderModal(asset) {
   // ── Metadata ────────────────────────────────────────────────
   var fields = [
     ['ประเภท',      asset.mediaType === 'video' ? 'วีดิโอ' : 'รูปภาพ'],
+    ['ช่างภาพ',     asset.photographer || null],
     ['ชนิดไฟล์',    asset.fileType],
     ['หมวดหมู่',    asset.category],
     ['วันที่สร้าง',  formatDate(asset.created)],
