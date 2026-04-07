@@ -269,6 +269,38 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
   </form>
 </section>
 
+<% if (results === null && recentFolders && recentFolders.length > 0) { %>
+<section class="recent-section">
+  <div class="recent-header">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="1" y="2" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M1 6h14" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M5 1v2M11 1v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span>อัปเดตล่าสุด 7 วัน</span>
+  </div>
+  <ul class="recent-list">
+    <% recentFolders.forEach(function(f) { %>
+      <li class="recent-item">
+        <a href="/search?locationFilter=<%= encodeURIComponent(f.folder) %>" class="recent-item-link">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M1 3h5l2 2h7v9H1V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+          <span class="recent-folder-name"><%= f.folder %></span>
+        </a>
+        <span class="recent-meta">
+          <%= f.count %> รายการ
+          <% if (f.latest) { %>
+            &nbsp;·&nbsp;
+            <%= new Date(f.latest).toLocaleDateString('th-TH', {month:'short', day:'numeric'}) %>
+          <% } %>
+        </span>
+      </li>
+    <% }); %>
+  </ul>
+</section>
+<% } %>
+
 <% if (error) { %>
   <div class="alert alert--error" role="alert">
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">

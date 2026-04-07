@@ -1,5 +1,16 @@
 [
   {
+    "version": "2.0.0",
+    "date": "2026-04-04",
+    "title": "YouTube-Style UI + Recent Updates Landing Page",
+    "entries": [
+      { "type": "improved", "text": "Header ปรับตาม Dark/Light theme อัตโนมัติ (ไม่ hardcode สีขาว)" },
+      { "type": "improved", "text": "โลโก้ใหญ่ขึ้น (36px) เด่นกว่าเดิม" },
+      { "type": "added", "text": "Search bar กลางหัว header แบบ YouTube — ค้นหาได้จากทุกหน้า" },
+      { "type": "added", "text": "Landing page แสดงโฟลเดอร์ที่มีสื่อเข้ามาใหม่ย้อนหลัง 7 วัน" }
+    ]
+  },
+  {
     "version": "1.9.0",
     "date": "2026-04-04",
     "title": "Security Hardening ก่อน Production",

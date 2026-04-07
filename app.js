@@ -139,7 +139,7 @@ const DEFAULT_RENDER = {
   searchLabels: '', searchMetadata: '', searchFile: '', searchDetectedText: '',
   dateFrom: '', dateTo: '', durationMin: '', durationMax: '',
   locationFilter: '', sortBy: 'date', sortOrder: 'desc', pageSize: 24,
-  displayQuery: '', stats: null,
+  displayQuery: '', stats: null, recentFolders: [],
 };
 
 // ── 404 handler ──────────────────────────────────────────────

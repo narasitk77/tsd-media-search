@@ -108,10 +108,32 @@
         <span></span><span></span><span></span>
       </button>
 
+      <!-- Logo -->
       <a href="/" class="logo">
         <img src="/images/the-standard-logo.png" alt="The Standard" class="logo-img" />
-        <span>Media Search <span style="font-size:0.7em;font-weight:400;color:#9ca3af;letter-spacing:0.05em;">DEMO</span></span>
+        <span class="logo-text">Media Search <span class="logo-demo">DEMO</span></span>
       </a>
+
+      <!-- Centered search bar -->
+      <div class="header-search">
+        <form class="header-search-form" action="/search" method="GET" role="search">
+          <input
+            type="text"
+            name="q"
+            class="header-search-input"
+            placeholder="ค้นหาสื่อ..."
+            value="<%= typeof query !== 'undefined' ? query : '' %>"
+            autocomplete="off"
+            aria-label="ค้นหา"
+          />
+          <button type="submit" class="header-search-btn" aria-label="ค้นหา">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none">
+              <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/>
+              <path d="M13 13l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </form>
+      </div>
 
       <div class="header-right">
         <!-- Theme toggle -->

@@ -12,7 +12,8 @@ function str(v) { return (v || '').trim(); }
 // ── Home ──────────────────────────────────────────────────────
 async function index(req, res) {
   let stats = { images: 0, videos: 0, total: 0 };
-  try { stats = await mimirModel.getStats(); } catch (_) {}
+  let recentFolders = [];
+  try { [stats, recentFolders] = await Promise.all([mimirModel.getStats(), mimirModel.getRecentFolders(7)]); } catch (_) {}
 
   res.render('index', {
     title:             'Mimir Media Search',
@@ -43,6 +44,7 @@ async function index(req, res) {
     sortOrder:         'desc',
     pageSize:          24,
     stats,
+    recentFolders,
     error:             null,
   });
 }

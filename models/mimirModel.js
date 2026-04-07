@@ -411,4 +411,27 @@ async function getAssetById(id) {
   return normaliseItemFull(r.data);
 }
 
-module.exports = { searchAssets, getAssetById, getThumbnailUrl, getStats };
+// ── Recent folders (last N days) ───────────────────────────────
+async function getRecentFolders(days) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  try {
+    const r = await api.get('/search', { params: { itemsPerPage: 500, from: 0 } });
+    const batch = (r.data._embedded && r.data._embedded.collection) || [];
+    const folderMap = {};
+    for (const raw of batch) {
+      const mtype = (raw.itemType || '').toLowerCase();
+      if (!MEDIA_TYPES.has(mtype)) continue;
+      const item   = normaliseItem(raw);
+      const dateMs = new Date(item.modified || item.created || 0).getTime();
+      if (dateMs < cutoff) continue;
+      const folder = item.rootFolder || '(ไม่มีโฟลเดอร์)';
+      if (!folderMap[folder]) folderMap[folder] = { folder, count: 0, latest: null };
+      folderMap[folder].count++;
+      const d = item.modified || item.created;
+      if (!folderMap[folder].latest || d > folderMap[folder].latest) folderMap[folder].latest = d;
+    }
+    return Object.values(folderMap).sort((a, b) => (b.latest || '').localeCompare(a.latest || ''));
+  } catch (_) { return []; }
+}
+
+module.exports = { searchAssets, getAssetById, getThumbnailUrl, getStats, getRecentFolders };
