@@ -47,6 +47,15 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
   </div>
 </div>
 
+<!-- Notice bar -->
+<div class="notice-bar">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex-shrink:0">
+    <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+    <path d="M8 5v4M8 11h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+  วีดิโอปี 2026 มีเฉพาะ <strong>The Secret Sauce</strong> และ <strong>NEWS</strong> บางส่วนเท่านั้น เนื่องจากเป็นทีมทดสอบ Project Mimir
+</div>
+
 <!-- Stats bar (landing page only) -->
 <% if (results === null && stats && stats.total > 0) { %>
   <p class="stats-bar">
