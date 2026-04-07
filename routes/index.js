@@ -7,6 +7,7 @@ const changelog  = require('../controllers/changelogController');
 const auth       = require('../controllers/authController');
 const admin      = require('../controllers/adminController');
 const { requireAuth } = require('../middleware/auth');
+const { setToken, clearToken } = require('../middleware/jwt');
 const logModel   = require('../models/logModel');
 
 const router = express.Router();
@@ -16,7 +17,10 @@ const SAFE_ID = /^[a-zA-Z0-9_-]{1,100}$/;
 
 // ── Auth ──────────────────────────────────────────────────────
 router.get('/login',  auth.loginPage);
-router.get('/logout', auth.logout);
+router.get('/logout', function (req, res, next) {
+  clearToken(res);             // clear JWT cookie
+  auth.logout(req, res, next); // clear passport session + redirect
+});
 
 router.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'], hd: 'thestandard.co' })
@@ -25,6 +29,7 @@ router.get('/auth/google',
 router.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login?error=fail' }),
   function (req, res) {
+    setToken(res, req.user);   // issue signed JWT cookie
     logModel.log(req.user.email, 'login', { name: req.user.name });
     const returnTo = req.session.returnTo || '/';
     delete req.session.returnTo;

@@ -9,8 +9,10 @@ const session        = require('express-session');
 const MemoryStore    = require('memorystore')(session);
 const passport       = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const cookieParser   = require('cookie-parser');
 const helmet         = require('helmet');
 const rateLimit      = require('express-rate-limit');
+const { verifyMiddleware: verifyJwt } = require('./middleware/jwt');
 
 const routes = require('./routes/index');
 
@@ -82,6 +84,9 @@ app.locals.formatDuration = function (seconds) {
 // ── Static files ─────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── Cookie parser (needed for JWT cookie) ────────────────────
+app.use(cookieParser());
+
 // ── Body parsers (with size limits) ──────────────────────────
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ limit: '100kb', extended: false }));
@@ -123,8 +128,12 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Make user available in all EJS templates
+// ── JWT verification (runs after session, sets req.jwtUser) ──
+app.use(verifyJwt);
+
+// Make user available in all EJS templates (JWT takes priority)
 app.use(function (req, res, next) {
+  if (req.jwtUser) req.user = req.jwtUser;
   res.locals.user = req.user || null;
   next();
 });
