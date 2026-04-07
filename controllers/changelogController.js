@@ -3,7 +3,7 @@
 const path = require('path');
 const fs   = require('fs');
 
-const CHANGELOG_PATH = path.join(__dirname, '../data/changelog.json');
+const CHANGELOG_PATH = path.join(__dirname, '../changelog.json');
 
 function index(req, res) {
   let entries = [];
