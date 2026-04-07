@@ -132,12 +132,11 @@ function renderModal(asset) {
   var actions = '';
   var dlUrl = asset.highResUrl || asset.previewUrl;
   if (dlUrl) {
-    var label = asset.mediaType === 'video' ? 'ดาวน์โหลด Hi-Res วีดิโอ' : 'ดาวน์โหลด Hi-Res รูปภาพ';
+    var label = 'ดาวน์โหลด Hi-res';
     actions += '<a href="' + escHtml(dlUrl) + '" target="_blank" rel="noopener" class="btn btn--primary">' + label + '</a>';
   }
   if (asset.previewUrl && asset.previewUrl !== dlUrl) {
-    var proxyLabel = asset.mediaType === 'video' ? 'เปิดดูวีดิโอ (Web Quality)' : 'เปิดดูรูป (Web Quality)';
-    actions += '<a href="' + escHtml(asset.previewUrl) + '" target="_blank" rel="noopener" class="btn btn--ghost">' + proxyLabel + '</a>';
+    actions += '<a href="' + escHtml(asset.previewUrl) + '" target="_blank" rel="noopener" class="btn btn--ghost">ดาวน์โหลด Low-res</a>';
   }
   modalActions.innerHTML = actions;
 
