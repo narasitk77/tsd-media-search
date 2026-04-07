@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <!-- Apply saved theme before render to avoid flash -->
   <script>
     (function () {
       try {
@@ -20,65 +19,116 @@
   </script>
 </head>
 <body>
+
+  <!-- ── Left Sidebar ─────────────────────────────────────── -->
+  <div class="side-nav" id="sideNav">
+    <div class="side-nav-header">
+      <a href="/" class="side-logo">
+        <img src="/images/the-standard-logo.png" alt="The Standard" />
+      </a>
+    </div>
+    <nav class="side-links">
+      <a href="/" class="side-link <%= (typeof activeTab === 'undefined' || activeTab !== 'changelog' && activeTab !== 'admin') ? 'active' : '' %>">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+          <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span>ค้นหาสื่อ</span>
+      </a>
+
+      <button class="side-link" id="clPanelBtn">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="1" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span>Change Logs</span>
+      </button>
+
+      <% var adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(function(e){return e.trim()}); %>
+      <% if (typeof user !== 'undefined' && user && adminEmails.includes(user.email)) { %>
+        <a href="/admin" class="side-link <%= (typeof activeTab !== 'undefined' && activeTab === 'admin') ? 'active' : '' %>">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+      <% } %>
+    </nav>
+
+    <div class="side-nav-footer">
+      <% if (typeof user !== 'undefined' && user) { %>
+        <div class="side-user">
+          <% if (user.photo) { %>
+            <img src="<%= user.photo %>" alt="<%= user.name %>" referrerpolicy="no-referrer" class="side-user-photo" />
+          <% } %>
+          <div class="side-user-info">
+            <div class="side-user-name"><%= user.name || user.email %></div>
+            <div class="side-user-email"><%= user.email %></div>
+          </div>
+        </div>
+        <a href="/logout" class="side-logout">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10 11l4-4-4-4M14 8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          ออกจากระบบ
+        </a>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- ── Backdrop ──────────────────────────────────────────── -->
+  <div class="nav-backdrop" id="navBackdrop"></div>
+
+  <!-- ── Changelog right panel ────────────────────────────── -->
+  <div class="cl-panel" id="clPanel">
+    <div class="cl-panel-header">
+      <span class="cl-panel-title">Change Logs</span>
+      <button class="cl-panel-close" id="clPanelClose" aria-label="ปิด">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="cl-panel-body" id="clPanelBody">
+      <div class="cl-panel-loading">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+  <div class="cl-backdrop" id="clBackdrop"></div>
+
+  <!-- ── Top Header ────────────────────────────────────────── -->
   <header class="site-header">
     <div class="header-inner">
+      <!-- Hamburger -->
+      <button class="hamburger" id="menuToggle" aria-label="เมนู">
+        <span></span><span></span><span></span>
+      </button>
+
       <a href="/" class="logo">
         <img src="/images/the-standard-logo.png" alt="The Standard" class="logo-img" />
         <span>Media Search <span style="font-size:0.7em;font-weight:400;color:#9ca3af;letter-spacing:0.05em;">DEMO</span></span>
       </a>
 
-      <nav class="site-nav">
-        <a href="/" class="nav-link <%= (typeof activeTab === 'undefined' || activeTab !== 'changelog') ? 'active' : '' %>">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <span>ค้นหาสื่อ</span>
-        </a>
-        <a href="/changelog" class="nav-link <%= (typeof activeTab !== 'undefined' && activeTab === 'changelog') ? 'active' : '' %>">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="1" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <span>Change Logs</span>
-        </a>
-
-        <% if (typeof user !== 'undefined' && user && (process.env.ADMIN_EMAILS || '').split(',').map(function(e){return e.trim()}).includes(user.email)) { %>
-          <a href="/admin" class="nav-link <%= (typeof activeTab !== 'undefined' && activeTab === 'admin') ? 'active' : '' %>">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
-              <rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
-              <rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
-              <rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
-            </svg>
-            <span>Dashboard</span>
-          </a>
-        <% } %>
-
-        <!-- User info + logout -->
-        <% if (typeof user !== 'undefined' && user) { %>
-          <div class="user-chip">
-            <% if (user.photo) { %>
-              <img src="<%= user.photo %>" alt="<%= user.name %>" referrerpolicy="no-referrer" />
-            <% } %>
-            <span class="user-name"><%= user.name || user.email %></span>
-          </div>
-          <a href="/logout" class="btn-logout">ออกจากระบบ</a>
-        <% } %>
-
-        <!-- Dark / Light mode toggle -->
+      <div class="header-right">
+        <!-- Theme toggle -->
         <button class="theme-toggle" id="themeToggle" aria-label="เปลี่ยนธีม">
-          <!-- Moon icon: shown in light mode (click → go dark) -->
           <svg class="theme-icon theme-icon--dark" width="17" height="17" viewBox="0 0 24 24" fill="none">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <!-- Sun icon: shown in dark mode (click → go light) -->
           <svg class="theme-icon theme-icon--light" width="17" height="17" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
             <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
-      </nav>
+        <!-- User avatar -->
+        <% if (typeof user !== 'undefined' && user && user.photo) { %>
+          <img src="<%= user.photo %>" alt="<%= user.name %>" referrerpolicy="no-referrer" class="header-avatar" />
+        <% } %>
+      </div>
     </div>
   </header>
   <main class="main-content">

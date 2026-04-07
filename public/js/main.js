@@ -4,6 +4,98 @@
    Mimir Media Search — Frontend JS
    ========================================================= */
 
+// ── Hamburger / Left Sidebar ──────────────────────────────────
+(function () {
+  var menuToggle  = document.getElementById('menuToggle');
+  var sideNav     = document.getElementById('sideNav');
+  var navBackdrop = document.getElementById('navBackdrop');
+  if (!menuToggle || !sideNav) return;
+
+  function openMenu() {
+    sideNav.classList.add('open');
+    navBackdrop.classList.add('show');
+    menuToggle.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeMenu() {
+    sideNav.classList.remove('open');
+    navBackdrop.classList.remove('show');
+    menuToggle.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  menuToggle.addEventListener('click', function () {
+    sideNav.classList.contains('open') ? closeMenu() : openMenu();
+  });
+  navBackdrop.addEventListener('click', closeMenu);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeMenu(); closeClPanel(); }
+  });
+})();
+
+// ── Changelog Right Panel ─────────────────────────────────────
+var clPanelLoaded = false;
+
+function openClPanel() {
+  var panel     = document.getElementById('clPanel');
+  var backdrop  = document.getElementById('clBackdrop');
+  var body      = document.getElementById('clPanelBody');
+  if (!panel) return;
+  panel.classList.add('open');
+  backdrop.classList.add('show');
+
+  if (!clPanelLoaded) {
+    clPanelLoaded = true;
+    fetch('/api/changelog')
+      .then(function (r) { return r.json(); })
+      .then(function (entries) {
+        body.innerHTML = renderChangelog(entries);
+      })
+      .catch(function () {
+        body.innerHTML = '<p style="color:#dc2626;padding:20px">โหลดไม่สำเร็จ</p>';
+      });
+  }
+}
+function closeClPanel() {
+  var panel    = document.getElementById('clPanel');
+  var backdrop = document.getElementById('clBackdrop');
+  if (panel)    panel.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('show');
+}
+function renderChangelog(entries) {
+  if (!entries || !entries.length) return '<p style="color:#9ca3af;padding:20px">ไม่มีข้อมูล</p>';
+  return entries.map(function (r, ri) {
+    var dateStr = '';
+    try { dateStr = new Date(r.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { dateStr = r.date; }
+    var latest  = ri === 0 ? '<span class="cl-latest-badge">ล่าสุด</span>' : '';
+    var entryHtml = (r.entries || []).map(function (en) {
+      var icons = { added: '<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>', fixed: '<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>', improved: '<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 9l4-6 4 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' };
+      var icon  = icons[en.type] || '';
+      var label = en.type === 'added' ? 'Added' : en.type === 'fixed' ? 'Fixed' : en.type === 'improved' ? 'Improved' : en.type;
+      return '<li class="cl-entry cl-entry--' + escHtml(en.type) + '">' +
+        '<span class="cl-entry-badge cl-entry-badge--' + escHtml(en.type) + '">' + icon + ' ' + label + '</span>' +
+        '<span class="cl-entry-text">' + escHtml(en.text) + '</span></li>';
+    }).join('');
+    return '<div class="cl-release">' +
+      '<div class="cl-release-meta">' +
+        '<span class="cl-version">v' + escHtml(r.version) + '</span>' +
+        '<span class="cl-date">' + escHtml(dateStr) + '</span>' +
+        latest +
+      '</div>' +
+      '<div class="cl-release-body">' +
+        '<h2 class="cl-release-title">' + escHtml(r.title) + '</h2>' +
+        '<ul class="cl-entries">' + entryHtml + '</ul>' +
+      '</div></div>';
+  }).join('');
+}
+
+var clBtn     = document.getElementById('clPanelBtn');
+var clClose   = document.getElementById('clPanelClose');
+var clBdrop   = document.getElementById('clBackdrop');
+if (clBtn)   clBtn.addEventListener('click',   function () { openClPanel(); document.getElementById('sideNav') && document.getElementById('sideNav').classList.remove('open'); document.getElementById('navBackdrop') && document.getElementById('navBackdrop').classList.remove('show'); document.getElementById('menuToggle') && document.getElementById('menuToggle').classList.remove('open'); document.body.style.overflow = ''; });
+if (clClose) clClose.addEventListener('click', closeClPanel);
+if (clBdrop) clBdrop.addEventListener('click', closeClPanel);
+
 // ── Advanced Search Panel ────────────────────────────────────
 var advToggle = document.getElementById('advToggle');
 var advPanel  = document.getElementById('advPanel');

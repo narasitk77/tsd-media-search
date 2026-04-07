@@ -37,7 +37,8 @@ router.use(requireAuth);
 
 router.get('/',         controller.index);
 router.get('/search',   controller.search);
-router.get('/changelog', changelog.index);
+router.get('/changelog',     changelog.index);
+router.get('/api/changelog', changelog.api);
 router.get('/admin',    admin.requireAdmin, admin.dashboard);
 
 router.get('/proxy/thumbnail/:id', function (req, res, next) {
