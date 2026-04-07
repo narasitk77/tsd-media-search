@@ -4,6 +4,11 @@ const fs   = require('fs');
 const path = require('path');
 
 const USERS_FILE = path.join(__dirname, '../data/users.json');
+const DATA_DIR   = path.dirname(USERS_FILE);
+
+function ensureDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 function readUsers() {
   try { return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); }
@@ -11,7 +16,12 @@ function readUsers() {
 }
 
 function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  try {
+    ensureDir();
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[userModel] writeUsers failed:', e.message);
+  }
 }
 
 function getAll() {

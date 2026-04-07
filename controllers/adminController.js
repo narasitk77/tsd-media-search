@@ -23,7 +23,32 @@ async function dashboard(req, res) {
 
   // Enrich users with activity stats from log
   const allLogs = logModel.readAll ? logModel.readAll() : [];
-  const enrichedUsers = users.map(u => {
+
+  // If users.json is empty, seed ghost records from login events in the log
+  // so admin can see who has been using the system before this version was deployed
+  let resolvedUsers = users;
+  if (resolvedUsers.length === 0 && allLogs.length > 0) {
+    const seenEmails = new Set();
+    allLogs.filter(e => e.action === 'login').forEach(e => {
+      if (!seenEmails.has(e.user)) {
+        seenEmails.add(e.user);
+        resolvedUsers.push({
+          email:       e.user,
+          name:        (e.detail && e.detail.name) || '',
+          photo:       '',
+          role:        'user',
+          canSearch:   true,
+          canDownload: true,
+          status:      'active',
+          registeredAt: e.ts,
+          lastSeen:    e.ts,
+          _fromLog:    true, // flag: not yet in users.json
+        });
+      }
+    });
+  }
+
+  const enrichedUsers = resolvedUsers.map(u => {
     const userLogs = allLogs.filter(e => e.user === u.email);
     return {
       ...u,
