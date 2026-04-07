@@ -518,6 +518,8 @@ a:hover { text-decoration: underline; }
   z-index: 190;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 .chips-bar {
   max-width: 1400px;
@@ -583,6 +585,8 @@ a:hover { text-decoration: underline; }
   font-size: 0.85rem;
   line-height: 1.5;
   text-align: center;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 [data-theme="dark"] .notice-bar {
   background: #2d1515;
