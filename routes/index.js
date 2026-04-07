@@ -5,6 +5,7 @@ const passport   = require('passport');
 const controller = require('../controllers/searchController');
 const changelog  = require('../controllers/changelogController');
 const auth       = require('../controllers/authController');
+const admin      = require('../controllers/adminController');
 const { requireAuth } = require('../middleware/auth');
 const logModel   = require('../models/logModel');
 
@@ -37,6 +38,7 @@ router.use(requireAuth);
 router.get('/',         controller.index);
 router.get('/search',   controller.search);
 router.get('/changelog', changelog.index);
+router.get('/admin',    admin.requireAdmin, admin.dashboard);
 
 router.get('/proxy/thumbnail/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).end();

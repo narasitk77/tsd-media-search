@@ -1,0 +1,175 @@
+<%- include('partials/header', { activeTab: 'admin' }) %>
+
+<div class="admin-page">
+
+  <div class="admin-header">
+    <h1 class="admin-title">Dashboard</h1>
+    <p class="admin-subtitle">สถิติการใช้งาน Media Search</p>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="admin-stats-grid">
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon admin-stat-icon--blue">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M4 20c0-4 3.582-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="admin-stat-body">
+        <div class="admin-stat-num"><%= stats.uniqueUsers %></div>
+        <div class="admin-stat-label">ผู้ใช้งานทั้งหมด</div>
+      </div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon admin-stat-icon--green">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="admin-stat-body">
+        <div class="admin-stat-num"><%= stats.totalLogins %></div>
+        <div class="admin-stat-label">ครั้งที่ Login</div>
+      </div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon admin-stat-icon--purple">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M14 14l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="admin-stat-body">
+        <div class="admin-stat-num"><%= stats.totalSearches %></div>
+        <div class="admin-stat-label">ครั้งที่ค้นหา</div>
+      </div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon admin-stat-icon--orange">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 3v13M7 11l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="admin-stat-body">
+        <div class="admin-stat-num"><%= stats.totalDownloads %></div>
+        <div class="admin-stat-label">ครั้งที่ดาวน์โหลด</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-two-col">
+
+    <!-- Top search queries -->
+    <div class="admin-card">
+      <h2 class="admin-card-title">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        คำค้นหายอดนิยม
+      </h2>
+      <% if (stats.topQueries.length === 0) { %>
+        <p class="admin-empty">ยังไม่มีข้อมูล</p>
+      <% } else { %>
+        <div class="admin-query-list">
+          <% stats.topQueries.forEach(function(item, i) { %>
+            <div class="admin-query-row">
+              <span class="admin-query-rank"><%= i + 1 %></span>
+              <span class="admin-query-text">"<%= item.q %>"</span>
+              <span class="admin-query-count"><%= item.count %> ครั้ง</span>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Users table -->
+    <div class="admin-card">
+      <h2 class="admin-card-title">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        ผู้ใช้งาน
+      </h2>
+      <% if (stats.users.length === 0) { %>
+        <p class="admin-empty">ยังไม่มีข้อมูล</p>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>อีเมล</th>
+                <th>ค้นหา</th>
+                <th>ดาวน์โหลด</th>
+                <th>ใช้งานล่าสุด</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% stats.users.forEach(function(u) { %>
+                <tr>
+                  <td class="admin-user-email"><%= u.email %></td>
+                  <td class="admin-num"><%= u.searches %></td>
+                  <td class="admin-num"><%= u.downloads %></td>
+                  <td class="admin-date"><%= new Date(u.lastSeen).toLocaleDateString('th-TH', {year:'numeric',month:'short',day:'numeric'}) %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+
+  </div>
+
+  <!-- Recent activity -->
+  <div class="admin-card admin-card--full">
+    <h2 class="admin-card-title">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      กิจกรรมล่าสุด
+    </h2>
+    <% if (stats.recentActivity.length === 0) { %>
+      <p class="admin-empty">ยังไม่มีข้อมูล</p>
+    <% } else { %>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>เวลา</th><th>ผู้ใช้</th><th>Action</th><th>รายละเอียด</th></tr>
+          </thead>
+          <tbody>
+            <% stats.recentActivity.forEach(function(e) { %>
+              <tr>
+                <td class="admin-date" style="white-space:nowrap">
+                  <%= new Date(e.ts).toLocaleString('th-TH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+                </td>
+                <td class="admin-user-email"><%= e.user %></td>
+                <td><span class="admin-action-badge admin-action-badge--<%= e.action %>"><%= e.action %></span></td>
+                <td class="admin-detail">
+                  <% if (e.action === 'search' && e.detail) { %>
+                    <% var q = e.detail.q || ''; %>
+                    <% if (q) { %>"<strong><%= q %></strong>"<% } else { %><span style="color:var(--text-muted)">browse</span><% } %>
+                    <% if (e.detail.total !== undefined) { %> · <%= e.detail.total %> รายการ<% } %>
+                  <% } else if (e.action === 'view' && e.detail) { %>
+                    <%= e.detail.title || e.detail.assetId %>
+                  <% } else if (e.action === 'download' && e.detail) { %>
+                    <%= e.detail.title || e.detail.assetId %>
+                    <% if (e.detail.mediaType) { %><span class="admin-tag"><%= e.detail.mediaType %></span><% } %>
+                  <% } else if (e.action === 'login' && e.detail) { %>
+                    <%= e.detail.name || '' %>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+</div>
+
+<%- include('partials/footer') %>
