@@ -1239,9 +1239,15 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Admin Dashboard ---------- */
 .admin-page { max-width: 1100px; margin: 0 auto; padding: 32px 0 60px; }
-.admin-header { margin-bottom: 28px; }
+.admin-header { margin-bottom: 28px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .admin-title { font-size: 1.6rem; font-weight: 700; color: var(--text); }
 .admin-subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 4px; }
+.admin-refresh { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.admin-refresh-label { font-size: 0.82rem; color: var(--text-muted); }
+.btn--sm { padding: 5px 12px; font-size: 0.82rem; }
+.admin-sha { font-family: monospace; font-size: 0.82rem; color: var(--blue); }
+.admin-sha:hover { text-decoration: underline; }
+.admin-commit-msg { font-size: 0.88rem; max-width: 420px; }
 
 .admin-stats-grid {
   display: grid;

@@ -3,8 +3,14 @@
 <div class="admin-page">
 
   <div class="admin-header">
-    <h1 class="admin-title">Dashboard</h1>
-    <p class="admin-subtitle">สถิติการใช้งาน Media Search</p>
+    <div>
+      <h1 class="admin-title">Dashboard</h1>
+      <p class="admin-subtitle">สถิติการใช้งาน Media Search</p>
+    </div>
+    <div class="admin-refresh">
+      <span class="admin-refresh-label">รีเฟรชใน <span id="refreshCountdown">30</span>s</span>
+      <button class="btn btn--ghost btn--sm" onclick="location.reload()">รีเฟรชเดี๋ยวนี้</button>
+    </div>
   </div>
 
   <!-- Summary cards -->
@@ -170,6 +176,55 @@
     <% } %>
   </div>
 
+  <!-- Git Commits -->
+  <div class="admin-card admin-card--full">
+    <h2 class="admin-card-title">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M8 1v4M8 11v4M1 8h4M11 8h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Git Commits — ประวัติการอัปเดต
+    </h2>
+    <% if (commits === null) { %>
+      <p class="admin-empty" style="color:var(--error)">
+        ⚠️ ยังไม่ได้ตั้งค่า <code>GITHUB_TOKEN</code> ใน Railway Variables — เพิ่มแล้วจะเห็น commit history ที่นี่
+      </p>
+    <% } else if (commits.length === 0) { %>
+      <p class="admin-empty">ไม่สามารถดึงข้อมูลได้</p>
+    <% } else { %>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>SHA</th><th>ข้อความ Commit</th><th>โดย</th><th>เวลา</th></tr>
+          </thead>
+          <tbody>
+            <% commits.forEach(function(c) { %>
+              <tr>
+                <td><a href="<%= c.url %>" target="_blank" rel="noopener" class="admin-sha"><%= c.sha %></a></td>
+                <td class="admin-commit-msg"><%= c.message %></td>
+                <td style="color:var(--text-muted);font-size:0.82rem"><%= c.author %></td>
+                <td class="admin-date" style="white-space:nowrap">
+                  <%= new Date(c.date).toLocaleString('th-TH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
 </div>
+
+<script>
+  // Auto-refresh every 30 seconds
+  var countdown = 30;
+  var el = document.getElementById('refreshCountdown');
+  setInterval(function () {
+    countdown--;
+    if (el) el.textContent = countdown;
+    if (countdown <= 0) location.reload();
+  }, 1000);
+</script>
 
 <%- include('partials/footer') %>

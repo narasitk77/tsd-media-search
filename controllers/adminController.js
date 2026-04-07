@@ -1,6 +1,7 @@
 'use strict';
 
-const logModel = require('../models/logModel');
+const logModel      = require('../models/logModel');
+const githubService = require('../services/githubService');
 
 // Only these emails can access /admin
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
@@ -13,11 +14,15 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-function dashboard(req, res) {
-  const stats = logModel.getStats();
+async function dashboard(req, res) {
+  const [stats, commits] = await Promise.all([
+    Promise.resolve(logModel.getStats()),
+    githubService.getRecentCommits(20),
+  ]);
   res.render('admin', {
     title: 'Admin Dashboard — Media Search',
     stats,
+    commits,
   });
 }
 
