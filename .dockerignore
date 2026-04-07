@@ -1,0 +1,10 @@
+node_modules
+.env
+.env.*
+!.env.example
+data/activity.log
+data/*.db
+*.log
+.git
+.gitignore
+PROJECT_SUMMARY.md
