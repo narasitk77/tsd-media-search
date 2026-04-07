@@ -412,6 +412,8 @@ async function getAssetById(id) {
 }
 
 // ── Recent folders (last N days) ───────────────────────────────
+const SKIP_FOLDER_WORDS = /\b(hires?|hi[-_]?res|lowres?|logo|clip|thum(b|nail)?s?|proxy|web|raw|original|preview)\b/i;
+
 async function getRecentFolders(days) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   try {
@@ -424,11 +426,20 @@ async function getRecentFolders(days) {
       const item   = normaliseItem(raw);
       const dateMs = new Date(item.modified || item.created || 0).getTime();
       if (dateMs < cutoff) continue;
-      const folder  = item.category || item.rootFolder || '(ไม่มีโฟลเดอร์)';
-      if (!folderMap[folder]) folderMap[folder] = { folder, count: 0, latest: null };
-      folderMap[folder].count++;
+
+      // Derive immediate folder and its parent from sourcePath
+      const parts   = (item.sourcePath || '').split('/').filter(Boolean);
+      // parts: [root, ..., parentFolder, immediateFolder, filename]
+      const folder  = parts.length >= 2 ? parts[parts.length - 2] : (parts[0] || null);
+      if (!folder) continue;
+      if (SKIP_FOLDER_WORDS.test(folder)) continue;
+
+      const parent  = parts.length >= 3 ? parts[parts.length - 3] : null;
+      const key     = folder;
+      if (!folderMap[key]) folderMap[key] = { folder, parent, count: 0, latest: null };
+      folderMap[key].count++;
       const d = item.modified || item.created;
-      if (!folderMap[folder].latest || d > folderMap[folder].latest) folderMap[folder].latest = d;
+      if (!folderMap[key].latest || d > folderMap[key].latest) folderMap[key].latest = d;
     }
     return Object.values(folderMap).sort((a, b) => (b.latest || '').localeCompare(a.latest || ''));
   } catch (_) { return []; }
