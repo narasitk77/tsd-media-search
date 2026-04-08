@@ -1,135 +1,147 @@
 # Mimir Media Search
 
-Internal web application for The Standard media team to search, preview, and download assets stored in the **Mimir DAM (Digital Asset Management)** system — images, videos, and other media files.
+เว็บแอปพลิเคชันสำหรับทีมสื่อของ The Standard ใช้ค้นหา ดูตัวอย่าง และดาวน์โหลดสื่อจากระบบ **Mimir DAM (Digital Asset Management)** ได้แก่ รูปภาพ วีดิโอ และไฟล์สื่ออื่น ๆ
 
 ---
 
-## Background (ที่มาที่ไป)
+## ที่มาที่ไป
 
-The Standard stores all editorial media (photos, videos, raw footage) in a DAM platform called **Mimir**, hosted externally. Mimir provides a REST API but no convenient search interface for the newsroom team.
+The Standard เก็บสื่อกองบรรณาธิการทั้งหมด (ภาพข่าว, วีดิโอ, footage) ไว้บนแพลตฟอร์ม DAM ชื่อ **Mimir** ซึ่งเชื่อมต่อผ่าน REST API แต่ไม่มี UI ค้นหาที่สะดวกสำหรับทีมในห้องข่าว
 
-**Project Mimir** is an internal initiative to build a fast, accessible search layer on top of the Mimir API so that editors, photographers, and video producers can:
+**Project Mimir** จึงเกิดขึ้นเพื่อสร้าง search layer บน API ดังกล่าว ให้บรรณาธิการ ช่างภาพ และทีมวีดิโอสามารถ:
 
-- Find assets by keyword, person name, description, or transcript
-- Filter by media type, date range, duration, and location
-- Preview images and videos directly in the browser
-- Download Hi-res or Lo-res versions without needing VPN or DAM credentials
+- ค้นหาสื่อด้วยคำสำคัญ ชื่อบุคคล คำบรรยาย หรือ transcript
+- กรองตามประเภทสื่อ ช่วงวันที่ ความยาววีดิโอ และสถานที่
+- ดูตัวอย่างรูปและวีดิโอได้ในเบราว์เซอร์ทันที
+- ดาวน์โหลด Hi-res หรือ Lo-res โดยไม่ต้องใช้ VPN หรือ credentials ของ DAM
 
-The project started on **1 April 2026** as a test deployment. As of v2.1, it is used by the full editorial team and restricted to `@thestandard.co` Google Workspace accounts.
+เริ่มทดสอบตั้งแต่วันที่ **1 เมษายน 2569** ตั้งแต่ v2.1 เป็นต้นมาจำกัดการใช้งานเฉพาะบัญชี Google Workspace `@thestandard.co`
 
 ---
 
-## Features
+## ฟีเจอร์หลัก
 
-| Feature | Description |
-|---------|-------------|
-| **Google OAuth Login** | Sign in with `@thestandard.co` Google Workspace — no separate password |
-| **Full-text search** | Search across title, people, description, transcript, labels, metadata, file name, and detected text |
-| **Advanced filters** | Date range, video duration, ingest location, sort order, page size |
-| **Media type chips** | Quick filter: All / Images / Videos — YouTube-style chips bar |
-| **Thumbnail grid** | Masonry layout, correct aspect ratios — no cropping |
-| **Asset modal** | Inline video player + full-size image preview + download buttons |
-| **Recent folders** | Landing page shows folders with new assets in the last 7 days |
-| **Scroll API** | Bypasses Elasticsearch 10,000-item cap — searches across 300,000+ assets |
-| **Dark / Light mode** | Persisted in localStorage, no flash on load |
-| **Admin Console** | 4-tab dashboard: Overview, User Management, Activity Logs, Git Commits |
-| **JWT Auth** | Stateless JWT cookie (2h TTL) alongside session auth — survives server restart |
-| **Activity logging** | Every login, search, view, and download is logged to `data/activity.log` |
+| ฟีเจอร์ | รายละเอียด |
+|---------|-----------|
+| **Google OAuth Login** | เข้าสู่ระบบด้วย `@thestandard.co` — ไม่ต้องตั้งรหัสผ่านแยก |
+| **ค้นหาเต็มรูปแบบ** | ค้นจาก title, ชื่อบุคคล, description, transcript, labels, metadata, ชื่อไฟล์ และ detected text |
+| **Advanced Search** | กรองช่วงวันที่, ความยาววีดิโอ, สถานที่, การเรียงลำดับ, จำนวนผลต่อหน้า |
+| **Chips bar** | กรองด่วน: ทั้งหมด / รูปภาพ / วีดิโอ แบบ YouTube |
+| **Thumbnail grid** | Grid เท่ากันทุกใบ อัตราส่วน 16:10, crop อัตโนมัติ |
+| **Asset modal** | video player ในหน้า + ดูรูปขนาดเต็ม + ปุ่มดาวน์โหลด |
+| **Recent folders** | Landing page แสดงโฟลเดอร์ที่มีสื่อใหม่ใน 7 วัน |
+| **Scroll API** | เลี่ยง cap 10,000 รายการของ Elasticsearch — ค้นได้ถึง 300,000+ รายการ |
+| **Dark / Light mode** | จำธีมไว้ใน localStorage ไม่ flash ขาวตอนโหลด |
+| **Admin Console** | Dashboard 4 แท็บ: ภาพรวม / ผู้ใช้งาน / กิจกรรม / Git Commits |
+| **JWT Auth** | JWT cookie (2 ชม.) ต่อคู่กับ session — ไม่ต้อง login ใหม่หลัง server restart |
+| **บันทึกกิจกรรม** | ทุก login, search, ดู asset, และดาวน์โหลด ถูกบันทึกเป็น JSONL |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
+| Layer | เทคโนโลยี |
+|-------|----------|
 | Runtime | Node.js 20 |
 | Framework | Express.js 4 |
 | Views | EJS templating |
 | Authentication | Passport.js + Google OAuth 2.0, JWT (HS256, httpOnly cookie) |
-| DAM API auth | AWS Cognito SRP via `amazon-cognito-identity-js` |
+| DAM API auth | AWS Cognito SRP ผ่าน `amazon-cognito-identity-js` |
 | Security | Helmet.js (CSP, HSTS, X-Frame-Options), express-rate-limit |
 | Session store | express-session + memorystore |
 | HTTP client | Axios |
-| Data persistence | File-based JSONL (`data/activity.log`) + JSON (`data/users.json`) |
-| Deployment | Railway.app (auto-deploy from GitHub main branch) |
-| Volume | Railway Volume mounted at `/app/data` — persists logs and user data across redeploys |
+| ข้อมูล persistent | JSONL (`data/activity.log`) + JSON (`data/users.json`) |
+| Deployment | Railway.app (auto-deploy จาก GitHub branch main) |
+| Volume | Railway Volume mount ที่ `/app/data` — ข้อมูลคงอยู่ข้ามการ redeploy |
+| Container | Docker + docker-compose |
 
 ---
 
-## Project Structure
+## โครงสร้างโปรเจค
 
 ```
 mimir-websearch/
-├── app.js                    # Express app entry point, middleware setup
+│
+├── app.js                      # จุดเริ่มต้นของแอป, ตั้งค่า middleware ทั้งหมด
+│
 ├── routes/
-│   └── index.js              # All route definitions
+│   └── index.js                # ลงทะเบียน route ทุกเส้น
+│
 ├── controllers/
-│   ├── searchController.js   # Search logic, Mimir API calls, pagination
-│   ├── adminController.js    # Admin dashboard, user CRUD
-│   ├── changelogController.js# Changelog page + JSON API
-│   └── authController.js     # Login page, logout handler
+│   ├── searchController.js     # logic ค้นหา, เรียก Mimir API, pagination
+│   ├── adminController.js      # Admin dashboard, CRUD user
+│   ├── changelogController.js  # หน้า Changelog + JSON API
+│   └── authController.js       # หน้า Login, logout handler
+│
 ├── models/
-│   ├── mimirModel.js         # Mimir API integration (Cognito auth + search)
-│   ├── userModel.js          # User registry (data/users.json)
-│   └── logModel.js           # Activity log read/write (data/activity.log)
+│   ├── mimirModel.js           # เชื่อมต่อ Mimir API (Cognito auth + search)
+│   ├── userModel.js            # ทะเบียนผู้ใช้ (data/users.json)
+│   └── logModel.js             # อ่าน/เขียน activity log (data/activity.log)
+│
 ├── services/
-│   ├── mimirAuth.js          # Cognito SRP token refresh logic
-│   └── githubService.js      # Fetch recent commits from GitHub API
+│   ├── mimirAuth.js            # Cognito SRP token refresh
+│   └── githubService.js        # ดึง commit history จาก GitHub API
+│
 ├── middleware/
-│   ├── auth.js               # requireAuth — checks JWT then falls back to session
-│   └── jwt.js                # JWT sign, verify, cookie set/clear
+│   ├── auth.js                 # requireAuth — ตรวจ JWT ก่อน ถ้าไม่มีค่อยตรวจ session
+│   └── jwt.js                  # sign, verify, set/clear cookie
+│
 ├── views/
-│   ├── index.ejs             # Main search page
-│   ├── admin.ejs             # Admin console (4 tabs)
-│   ├── login.ejs             # Login page
-│   ├── changelog.ejs         # Changelog page
+│   ├── index.ejs               # หน้าค้นหาหลัก
+│   ├── admin.ejs               # Admin console (4 แท็บ)
+│   ├── login.ejs               # หน้า Login
+│   ├── changelog.ejs           # หน้า Changelog
 │   └── partials/
-│       ├── header.ejs        # Navigation, dark mode toggle, user avatar
+│       ├── header.ejs          # Nav bar, dark mode toggle, avatar
 │       └── footer.ejs
+│
 ├── public/
-│   ├── css/style.css         # All styles (CSS custom properties for theming)
-│   └── js/                   # Client-side JS (search, modal, sidebar)
-├── data/                     # ← mounted as Railway Volume
-│   ├── activity.log          # JSONL activity log (append-only)
-│   └── users.json            # Registered user list with roles/permissions
-├── changelog.json            # Version history (at project root, not in Volume)
-├── Dockerfile                # Container definition
-├── railway.toml              # Railway deployment config
-└── .env.example              # Required environment variables
+│   ├── css/style.css           # ทุก style (ใช้ CSS custom properties สำหรับ theme)
+│   └── js/                     # Client-side JS (search, modal, sidebar)
+│
+├── data/                       # ← mount เป็น Railway Volume / Docker volume
+│   ├── activity.log            # JSONL บันทึกกิจกรรม (append-only)
+│   └── users.json              # รายชื่อผู้ใช้พร้อม role และสิทธิ์
+│
+├── changelog.json              # ประวัติ version (อยู่ root ไม่อยู่ใน Volume)
+├── Dockerfile                  # สร้าง production image (multi-stage, non-root user)
+├── docker-compose.yml          # รัน container พร้อม volume และ env
+├── railway.toml                # config สำหรับ Railway.app
+└── .env.example                # รายการ environment variables ที่ต้องตั้งค่า
 ```
 
 ---
 
-## Authentication Flow
+## การ Authentication
 
 ```
-User → Google OAuth → domain check (hd === 'thestandard.co')
-     → auto-register in data/users.json (first login)
-     → check status: suspended? → redirect /login?error=suspended
-     → set JWT cookie (2h TTL) + express session (8h)
-     → all routes require requireAuth middleware
+ผู้ใช้ → Google OAuth → ตรวจ domain (hd === 'thestandard.co')
+       → auto-register ลง data/users.json (login ครั้งแรก)
+       → ตรวจ status: suspended? → redirect /login?error=suspended
+       → ตั้งค่า JWT cookie (2 ชม.) + express session (8 ชม.)
+       → ทุก route ต้องผ่าน requireAuth middleware
 ```
 
-JWT takes priority over session — the app works after server restart without re-login as long as the cookie is valid.
+JWT มีลำดับความสำคัญก่อน session — แอปทำงานต่อได้หลัง server restart ตราบใดที่ cookie ยังไม่หมดอายุ
 
 ---
 
 ## Admin Console
 
-Available at `/admin` — restricted to emails listed in `ADMIN_EMAILS` env var.
+เข้าได้ที่ `/admin` — จำกัดเฉพาะอีเมลที่ตั้งใน env var `ADMIN_EMAILS`
 
-| Tab | What you can do |
-|-----|----------------|
-| **ภาพรวม** | Stats cards, top search queries, most active users |
-| **ผู้ใช้งาน** | Add/edit/remove users, set Role (admin/user), toggle search & download permissions, suspend accounts |
-| **กิจกรรม** | Full activity log, filter by user, view per-user download history |
-| **Git Commits** | Live commit history pulled from GitHub API |
+| แท็บ | สิ่งที่ทำได้ |
+|-----|------------|
+| **ภาพรวม** | Stats cards, คำค้นหายอดนิยม, ผู้ใช้ที่ active มากที่สุด |
+| **ผู้ใช้งาน** | เพิ่ม/แก้ไข/ลบ user, ตั้ง Role (admin/user), เปิดปิดสิทธิ์ค้นหา/ดาวน์โหลด, ระงับบัญชี |
+| **กิจกรรม** | Activity log ทั้งหมด, กรองตาม user, ดูประวัติดาวน์โหลดรายคน |
+| **Git Commits** | ประวัติ commit ล่าสุดจาก GitHub API |
 
 ---
 
 ## Environment Variables
 
-Create a `.env` file (see `.env.example`):
+สร้างไฟล์ `.env` (ดูตัวอย่างจาก `.env.example`):
 
 ```env
 # Google OAuth
@@ -138,8 +150,8 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=https://your-domain.com/auth/google/callback
 
 # Session + JWT
-SESSION_SECRET=your-random-secret
-JWT_SECRET=your-jwt-secret
+SESSION_SECRET=random-string-ยาว ๆ
+JWT_SECRET=random-string-ยาว ๆ
 
 # Mimir DAM API
 MIMIR_API_URL=
@@ -147,10 +159,10 @@ MIMIR_COGNITO_CLIENT_ID=
 MIMIR_USERNAME=
 MIMIR_PASSWORD=
 
-# Admin access (comma-separated emails)
+# Admin (คั่นด้วย comma)
 ADMIN_EMAILS=you@thestandard.co
 
-# GitHub API (for commit history in admin)
+# GitHub API (สำหรับ commit history ใน admin)
 GITHUB_TOKEN=
 GITHUB_REPO=org/repo-name
 
@@ -160,45 +172,56 @@ PORT=3000
 
 ---
 
-## Running Locally
+## รันในเครื่อง (Local)
 
 ```bash
 npm install
-cp .env.example .env   # fill in your values
-npm run dev            # nodemon — auto-restarts on file changes
+cp .env.example .env   # แก้ไขค่าให้ครบ
+npm run dev            # nodemon — restart อัตโนมัติเมื่อแก้ไขไฟล์
 ```
 
-Open `http://localhost:3000`
+เปิด `http://localhost:3000`
 
 ---
 
-## Deployment (Railway)
+## Deploy ด้วย Docker
 
-1. Push to `main` branch → Railway auto-deploys
-2. Add a **Volume** mounted at `/app/data` to persist logs and user data across redeploys
-3. Set all env vars in Railway → Variables tab
+```bash
+cp .env.example .env   # แก้ไขค่าให้ครบ
+docker compose up -d   # build และรัน container
+```
 
-The `railway.toml` and `Dockerfile` are included for custom build configuration.
+หรือถ้าใช้ Portainer / Docker stack โดยไม่มีไฟล์ `.env` ให้ตั้ง environment variables ใน UI ของ Portainer แทน (docker-compose.yml รองรับทั้งสองแบบ)
 
----
-
-## Version History
-
-See [CHANGELOG](changelog.json) or visit `/changelog` in the app.
-
-| Version | Date | Highlight |
-|---------|------|-----------|
-| 2.1.0 | 2026-04-07 | Admin Console with user management & activity logs |
-| 2.0.0 | 2026-04-07 | YouTube-style UI, chips bar, recent folders landing page |
-| 1.9.0 | 2026-04-06 | Security hardening (Helmet, rate limiting, input validation) |
-| 1.8.0 | 2026-04-05 | Google OAuth login + JWT + activity logging |
-| 1.7.0 | 2026-04-05 | Admin dashboard, hamburger sidebar, changelog panel |
-| 1.6.0 | 2026-04-04 | Rebrand to The Standard, Railway deployment |
-| 1.5.0 | 2026-04-04 | Dark mode, masonry thumbnail grid |
-| 1.4.0 | 2026-04-03 | Advanced search filters |
-| 1.3.0 | 2026-04-03 | Scroll API — break 10,000-item Elasticsearch cap |
-| 1.0.0 | 2026-04-01 | Initial release |
+Volume `./data:/app/data` จะเก็บ `activity.log` และ `users.json` ไว้นอก container
 
 ---
 
-*Internal tool — The Standard. Not for public distribution.*
+## Deploy บน Railway
+
+1. Push ไปที่ branch `main` → Railway auto-deploy
+2. เพิ่ม **Volume** mount ที่ `/app/data` เพื่อให้ข้อมูลคงอยู่ข้าม redeploy
+3. ตั้ง env vars ทั้งหมดใน Railway → แท็บ Variables
+
+---
+
+## ประวัติ Version
+
+ดูรายละเอียดที่ [changelog.json](changelog.json) หรือเปิด `/changelog` ในแอป
+
+| Version | วันที่ | สิ่งที่เปลี่ยน |
+|---------|--------|--------------|
+| 2.1.0 | 7 เม.ย. 69 | Admin Console: จัดการ user + Activity logs |
+| 2.0.0 | 7 เม.ย. 69 | UI แบบ YouTube, chips bar, landing page recent folders |
+| 1.9.0 | 6 เม.ย. 69 | Security hardening (Helmet, rate limiting, input validation) |
+| 1.8.0 | 5 เม.ย. 69 | Google OAuth login + JWT + activity logging |
+| 1.7.0 | 5 เม.ย. 69 | Admin dashboard, hamburger sidebar, changelog panel |
+| 1.6.0 | 4 เม.ย. 69 | Rebrand The Standard, deploy Railway |
+| 1.5.0 | 4 เม.ย. 69 | Dark mode, masonry thumbnail grid |
+| 1.4.0 | 3 เม.ย. 69 | Advanced search filters |
+| 1.3.0 | 3 เม.ย. 69 | Scroll API — ทะลุ cap 10,000 รายการ |
+| 1.0.0 | 1 เม.ย. 69 | เปิดตัว |
+
+---
+
+*เครื่องมือใช้ภายใน — The Standard ห้ามเผยแพร่สู่สาธารณะ*

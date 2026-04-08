@@ -7,7 +7,8 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - path: .env
+        required: false   # ถ้าไม่มีไฟล์ .env ให้ใช้ environment variables จาก host แทน
     volumes:
       # Persist activity log and changelog outside the container
       - ./data:/app/data
