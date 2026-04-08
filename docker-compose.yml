@@ -1,7 +1,6 @@
 services:
   app:
-    build: .
-    image: mimir-websearch:latest
+    image: ghcr.io/narasitk77/tsd-media-search:latest
     container_name: mimir-websearch
     restart: unless-stopped
     ports:
