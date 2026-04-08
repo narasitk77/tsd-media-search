@@ -9,20 +9,16 @@ RUN npm ci --omit=dev
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup -S appgroup && adduser -S -G appgroup appuser
-
 # Copy installed modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy app source
 COPY . .
 
-# data/ holds activity.log and changelog.json
-# Make the directory writable by appuser
-RUN mkdir -p data && chown -R appuser:appgroup /app
+# data/ directory writable by node user (built-in in node:alpine)
+RUN mkdir -p data && chown -R node:node /app
 
-USER appuser
+USER node
 
 ENV NODE_ENV=production
 ENV PORT=3000
