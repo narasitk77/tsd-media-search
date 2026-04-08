@@ -594,6 +594,12 @@ a:hover { text-decoration: underline; }
   color: #fca5a5;
 }
 .notice-bar strong { font-weight: 700; }
+.notice-bar__short { display: none; }
+@media (max-width: 600px) {
+  .notice-bar { font-size: 0.78rem; padding: 8px 12px; gap: 6px; white-space: nowrap; overflow: hidden; }
+  .notice-bar__full  { display: none; }
+  .notice-bar__short { display: inline; }
+}
 
 .stats-bar {
   text-align: center;
