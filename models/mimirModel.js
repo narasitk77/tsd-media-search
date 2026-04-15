@@ -445,4 +445,91 @@ async function getRecentFolders(days) {
   } catch (_) { return []; }
 }
 
-module.exports = { searchAssets, getAssetById, getThumbnailUrl, getStats, getRecentFolders };
+// ── Folder tree ────────────────────────────────────────────────
+const FOLDER_TREE_CACHE_TTL = 5 * 60 * 1000;
+let folderTreeCache = null;
+let folderTreeCacheTime = 0;
+
+async function getFolderTree() {
+  const now = Date.now();
+  if (folderTreeCache && now - folderTreeCacheTime < FOLDER_TREE_CACHE_TTL) {
+    return folderTreeCache;
+  }
+
+  const rootMap = {};
+  let scanned = 0;
+  const maxScan = 3000;
+
+  while (scanned < maxScan) {
+    const r = await api.get('/search', { params: { itemsPerPage: 500, from: scanned } });
+    const batch = (r.data._embedded && r.data._embedded.collection) || [];
+    if (!batch.length) break;
+
+    for (const raw of batch) {
+      const mtype = (raw.itemType || '').toLowerCase();
+      if (!MEDIA_TYPES.has(mtype)) continue;
+      const sourcePath = raw.ingestSourceFullPath || '';
+      const parts = sourcePath.split('/').filter(Boolean);
+      if (parts.length < 2) continue; // ต้องมีอย่างน้อย root/filename
+
+      const root = parts[0];
+      if (!rootMap[root]) rootMap[root] = { name: root, path: root, count: 0, subMap: {} };
+      rootMap[root].count++;
+
+      if (parts.length >= 3) {
+        // มี sub-folder: root/sub/...
+        const sub = parts[1];
+        const subPath = root + '/' + sub;
+        if (!rootMap[root].subMap[sub]) {
+          rootMap[root].subMap[sub] = { name: sub, path: subPath, count: 0 };
+        }
+        rootMap[root].subMap[sub].count++;
+      }
+    }
+
+    scanned += batch.length;
+    const apiTotal = r.data.totalAcrossPages || r.data.total || 0;
+    if (scanned >= apiTotal) break;
+  }
+
+  const tree = Object.values(rootMap)
+    .sort((a, b) => a.name.localeCompare(b.name, 'th'))
+    .map(f => ({
+      name:     f.name,
+      path:     f.path,
+      count:    f.count,
+      children: Object.values(f.subMap).sort((a, b) => a.name.localeCompare(b.name, 'th')),
+    }));
+
+  folderTreeCache     = tree;
+  folderTreeCacheTime = now;
+  return tree;
+}
+
+// ── Browse folder assets ───────────────────────────────────────
+async function browseFolderAssets(folderPath, { mediaType = 'all', page = 1, pageSize = 48 } = {}) {
+  // ใช้ keyword search แบบว่างแล้วกรองด้วย sourcePath prefix
+  const opts = {
+    searchString:    '',
+    mediaType, page, pageSize,
+    locationFilter:  folderPath,
+    sortBy:          'date',
+    sortOrder:       'desc',
+  };
+  // override locationFilter ให้ match prefix แน่นอน
+  const result = await searchByKeyword({
+    searchString: '', mediaType, page, pageSize,
+    dateFrom: null, dateTo: null, durationMin: null, durationMax: null,
+    locationFilter: folderPath,
+    sortBy: 'date', sortOrder: 'desc',
+  });
+  // กรอง prefix เพิ่มเติมให้แน่น
+  const fp = folderPath.toLowerCase();
+  result.items = result.items.filter(i =>
+    (i.sourcePath || '').toLowerCase().startsWith(fp + '/') ||
+    (i.sourcePath || '').toLowerCase() === fp
+  );
+  return result;
+}
+
+module.exports = { searchAssets, getAssetById, getThumbnailUrl, getStats, getRecentFolders, getFolderTree, browseFolderAssets };

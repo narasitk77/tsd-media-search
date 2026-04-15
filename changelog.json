@@ -1,5 +1,17 @@
 [
   {
+    "version": "2.2.0",
+    "date": "2026-04-15",
+    "title": "Folder Browser — เลือกดูสื่อทีละโฟลเดอร์",
+    "entries": [
+      { "type": "added", "text": "หน้า /browse แสดงรายการโฟลเดอร์ทั้งหมดพร้อมจำนวนไฟล์" },
+      { "type": "added", "text": "คลิกโฟลเดอร์ → ดูสื่อภายใน พร้อม breadcrumb นำทาง" },
+      { "type": "added", "text": "โฟลเดอร์ย่อย (sub-folder) แสดงให้คลิกไปต่อได้" },
+      { "type": "added", "text": "กรองรูปภาพ/วีดิโอภายในโฟลเดอร์ได้" },
+      { "type": "added", "text": "chip 'โฟลเดอร์' บน chips bar เข้าถึงได้จากทุกหน้า" }
+    ]
+  },
+  {
     "version": "2.1.0",
     "date": "2026-04-07",
     "title": "Admin Console — User Management & Activity Logs",

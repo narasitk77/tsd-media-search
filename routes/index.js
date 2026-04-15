@@ -4,6 +4,7 @@ const express    = require('express');
 const passport   = require('passport');
 const controller = require('../controllers/searchController');
 const changelog  = require('../controllers/changelogController');
+const browse     = require('../controllers/browseController');
 const auth       = require('../controllers/authController');
 const admin      = require('../controllers/adminController');
 const { requireAuth } = require('../middleware/auth');
@@ -52,6 +53,9 @@ router.get('/',         controller.index);
 router.get('/search',   controller.search);
 router.get('/changelog',     changelog.index);
 router.get('/api/changelog', changelog.api);
+router.get('/browse',          browse.folderList);
+router.get('/browse/folder',   browse.folderContents);
+
 router.get('/admin',    admin.requireAdmin, admin.dashboard);
 
 // ── Admin user management ─────────────────────────────────────
