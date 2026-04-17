@@ -3,7 +3,12 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     MIMIR_BASE_URL: str = "https://apac.mjoll.no"
-    MIMIR_TOKEN: str = ""
+    MIMIR_TOKEN: str = ""  # optional static token; if empty, uses Cognito SRP auth
+    # Cognito SRP auth (same as Node.js app — preferred over static token)
+    MIMIR_COGNITO_USER_POOL_ID: str = ""
+    MIMIR_COGNITO_CLIENT_ID: str = ""
+    MIMIR_USERNAME: str = ""
+    MIMIR_PASSWORD: str = ""
     FOLDER_ID: str = ""
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"

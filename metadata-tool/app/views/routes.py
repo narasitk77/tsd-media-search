@@ -56,7 +56,7 @@ class BulkReanalyzeRequest(BaseModel):
 from app.config import settings
 from app.controllers.gemini_controller import run_gemini_batch, _analyze_one as _gemini_analyze
 from app.controllers.claude_controller import run_claude_batch, _analyze_one as _claude_analyze
-from app.controllers.mimir_controller import discover_hires_folders, extract_folder_id, fetch_all_items, push_metadata_to_mimir
+from app.controllers.mimir_controller import discover_hires_folders, extract_folder_id, fetch_all_items, push_metadata_to_mimir, _auth_header
 from app.controllers._shared import cache_stats, clear_image_cache, extract_event_from_path, extract_path_context
 
 import urllib.parse
@@ -604,7 +604,7 @@ async def proxy_image(item_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No image URL")
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(url,
-            headers={"x-mimir-cognito-id-token": f"Bearer {settings.MIMIR_TOKEN}"},
+            headers=await _auth_header(),
             follow_redirects=True)
         if r.status_code != 200:
             raise HTTPException(status_code=r.status_code, detail="Image fetch failed")
@@ -632,7 +632,7 @@ async def stream_video(item_id: str, db: Session = Depends(get_db)):
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "GET", url,
-                headers={"x-mimir-cognito-id-token": f"Bearer {settings.MIMIR_TOKEN}"},
+                headers=await _auth_header(),
                 timeout=120,
             ) as r:
                 async for chunk in r.aiter_bytes(65536):
@@ -761,8 +761,8 @@ async def start_fetch(body: FetchRequest):
     global _active_folder_ids, _active_folder_contexts
     if _running["fetch"]:
         raise HTTPException(status_code=409, detail="Fetch already running")
-    if not settings.MIMIR_TOKEN:
-        raise HTTPException(status_code=400, detail="MIMIR_TOKEN not set")
+    if not settings.MIMIR_TOKEN and not settings.MIMIR_USERNAME:
+        raise HTTPException(status_code=400, detail="MIMIR_TOKEN or MIMIR_USERNAME/PASSWORD not set")
     if not body.folder_urls:
         raise HTTPException(status_code=400, detail="No folder URLs provided")
 
@@ -842,7 +842,7 @@ async def backfill_proxy(db: Session = Depends(get_db)):
             try:
                 r = await client.get(
                     f"{settings.MIMIR_BASE_URL}/api/v1/items/{asset.item_id}",
-                    headers={"x-mimir-cognito-id-token": f"Bearer {settings.MIMIR_TOKEN}"},
+                    headers=await _auth_header(),
                 )
                 if r.status_code == 200:
                     data = r.json()
@@ -935,7 +935,7 @@ async def debug_mimir_item(item_id: str, db: Session = Depends(get_db)):
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(
             f"{settings.MIMIR_BASE_URL}/api/v1/items/{item_id}",
-            headers={"x-mimir-cognito-id-token": f"Bearer {settings.MIMIR_TOKEN}"},
+            headers=await _auth_header(),
         )
         if r.status_code != 200:
             raise HTTPException(status_code=r.status_code, detail=r.text[:500])
@@ -1009,7 +1009,7 @@ async def discover_mimir_uuids(folder_id: str = "", pages: int = 3):
     """
     uuid_pat = _re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', _re.I)
     all_uuid_fields: dict = {}   # uuid_key → {sample_value, from_item}
-    headers = {"x-mimir-cognito-id-token": f"Bearer {settings.MIMIR_TOKEN}"}
+    headers = await _auth_header()
     fid = folder_id.strip() or settings.FOLDER_ID or ""
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -1044,7 +1044,7 @@ async def discover_mimir_uuids(folder_id: str = "", pages: int = 3):
 @router.get("/api/debug/mimir-schema")
 async def debug_mimir_schema():
     """Debug: try to fetch Mimir form schema to find valid taxonomy values."""
-    headers = {"x-mimir-cognito-id-token": f"Bearer {settings.MIMIR_TOKEN}"}
+    headers = await _auth_header()
     results = {}
     async with httpx.AsyncClient(timeout=30) as client:
         for path in [

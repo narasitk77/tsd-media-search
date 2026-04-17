@@ -11,6 +11,7 @@ from sqlalchemy import func
 from app.config import settings
 from app.database import SessionLocal
 from app.models.asset import Asset
+from app.services.cognito_auth import get_token as _get_token
 from app.controllers._shared import (
     extract_event_from_path, extract_date_from_path, extract_path_context,
     fetch_best_image, parse_gps, reverse_geocode,
@@ -268,7 +269,7 @@ async def _fetch_exif(client: httpx.AsyncClient, asset: Asset) -> dict:
     if not exif_url:
         r = await client.get(
             f"{settings.MIMIR_BASE_URL}/api/v1/items/{asset.item_id}",
-            headers={"x-mimir-cognito-id-token": f"Bearer {settings.MIMIR_TOKEN}"},
+            headers={"x-mimir-cognito-id-token": f"Bearer {settings.MIMIR_TOKEN or await _get_token()}"},
             timeout=15,
         )
         if r.status_code == 200:
@@ -349,7 +350,7 @@ async def _analyze_one(client: httpx.AsyncClient, asset: Asset,
 
     # 3. Fetch best available image (proxy hi-res → thumbnail fallback)
     image_bytes, mime_type = await fetch_best_image(
-        client, asset, settings.MIMIR_BASE_URL, settings.MIMIR_TOKEN
+        client, asset, settings.MIMIR_BASE_URL
     )
     image_b64 = base64.b64encode(image_bytes).decode()
     # Claude accepts image/jpeg, image/png, image/gif, image/webp
