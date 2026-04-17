@@ -23,7 +23,10 @@ const metadataProxy = createProxyMiddleware({
   pathRewrite: { '^/ai-tool': '' },
   on: {
     error: (err, req, res) => {
-      res.status(502).send('AI Metadata Tool ยังไม่พร้อมใช้งาน กรุณารอสักครู่');
+      console.error('[proxy] metadata-tool error:', err.code, err.message);
+      const msg = `AI Metadata Tool ยังไม่พร้อมใช้งาน (${err.code || err.message})`;
+      if (res.headersSent) return;
+      res.status(502).send(msg);
     },
   },
 });
@@ -78,6 +81,28 @@ router.post('/admin/users/:email/update',   admin.requireAdmin, admin.updateUser
 router.post('/admin/users/:email/remove',   admin.requireAdmin, admin.removeUser);
 
 // ── AI Metadata Tool proxy (admin only) ──────────────────────
+// Connectivity test — returns JSON with status so we can diagnose private-network issues
+router.get('/ai-tool/ping', admin.requireAdmin, async function (req, res) {
+  const https = require('https');
+  const http  = require('http');
+  const url   = new URL(METADATA_TOOL_URL);
+  const lib   = url.protocol === 'https:' ? https : http;
+  const start = Date.now();
+  try {
+    await new Promise((resolve, reject) => {
+      const r = lib.get(
+        { hostname: url.hostname, port: url.port || (url.protocol === 'https:' ? 443 : 80), path: '/api/stats', timeout: 5000 },
+        resolve
+      );
+      r.on('error', reject);
+      r.on('timeout', () => reject(new Error('timeout')));
+    });
+    res.json({ ok: true, target: METADATA_TOOL_URL, ms: Date.now() - start });
+  } catch (err) {
+    res.json({ ok: false, target: METADATA_TOOL_URL, error: err.message, code: err.code });
+  }
+});
+
 // Restore req.url to originalUrl before proxy so pathRewrite sees the full path
 router.use('/ai-tool', admin.requireAdmin, (req, res, next) => {
   req.url = req.originalUrl;
