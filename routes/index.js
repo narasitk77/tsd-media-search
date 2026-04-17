@@ -17,11 +17,17 @@ const router = express.Router();
 
 // Proxy to metadata-tool Python service (admin only, keep path as-is)
 const METADATA_TOOL_URL = process.env.METADATA_TOOL_URL || 'http://localhost:8000';
+const METADATA_TOOL_SECRET = process.env.METADATA_TOOL_SECRET || '';
 const metadataProxy = createProxyMiddleware({
   target: METADATA_TOOL_URL,
   changeOrigin: true,
   pathRewrite: { '^/ai-tool': '' },
   on: {
+    proxyReq: (proxyReq) => {
+      if (METADATA_TOOL_SECRET) {
+        proxyReq.setHeader('X-Internal-Secret', METADATA_TOOL_SECRET);
+      }
+    },
     error: (err, req, res) => {
       console.error('[proxy] metadata-tool error:', err.code, err.message);
       const msg = `AI Metadata Tool ยังไม่พร้อมใช้งาน (${err.code || err.message})`;
