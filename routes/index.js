@@ -2,6 +2,7 @@
 
 const express    = require('express');
 const passport   = require('passport');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const controller = require('../controllers/searchController');
 const changelog  = require('../controllers/changelogController');
 const browse     = require('../controllers/browseController');
@@ -13,6 +14,19 @@ const logModel   = require('../models/logModel');
 const userModel  = require('../models/userModel');
 
 const router = express.Router();
+
+// Proxy to metadata-tool Python service (admin only, keep path as-is)
+const METADATA_TOOL_URL = process.env.METADATA_TOOL_URL || 'http://localhost:8000';
+const metadataProxy = createProxyMiddleware({
+  target: METADATA_TOOL_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/ai-tool': '' },
+  on: {
+    error: (err, req, res) => {
+      res.status(502).send('AI Metadata Tool ยังไม่พร้อมใช้งาน กรุณารอสักครู่');
+    },
+  },
+});
 
 // Safe ID pattern: alphanumeric + hyphens/underscores, max 100 chars
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,100}$/;
@@ -62,6 +76,9 @@ router.get('/admin',    admin.requireAdmin, admin.dashboard);
 router.post('/admin/users/add',             admin.requireAdmin, admin.addUser);
 router.post('/admin/users/:email/update',   admin.requireAdmin, admin.updateUser);
 router.post('/admin/users/:email/remove',   admin.requireAdmin, admin.removeUser);
+
+// ── AI Metadata Tool proxy (admin only) ──────────────────────
+router.use('/ai-tool', admin.requireAdmin, metadataProxy);
 
 router.get('/proxy/thumbnail/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).end();

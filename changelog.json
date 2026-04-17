@@ -1,5 +1,16 @@
 [
   {
+    "version": "2.3.0",
+    "date": "2026-04-17",
+    "title": "AI Metadata Tool — รวมเครื่องมือใส่ Metadata ด้วย AI",
+    "entries": [
+      { "type": "added", "text": "รวม mimir-metadata-tool (Python/FastAPI) เป็น service คู่ใน docker-compose.yml" },
+      { "type": "added", "text": "ลิงก์ 'AI Metadata' ใน sidebar สำหรับ Admin — เปิดใน tab ใหม่" },
+      { "type": "added", "text": "Proxy route /ai-tool/* → metadata-tool:8000 ผ่าน http-proxy-middleware (admin only)" },
+      { "type": "added", "text": "รองรับ sub-path ผ่าน APP_ROOT_PATH env — metadata tool ใช้งานได้ทั้ง standalone และ behind proxy" }
+    ]
+  },
+  {
     "version": "2.2.0",
     "date": "2026-04-15",
     "title": "Folder Browser — เลือกดูสื่อทีละโฟลเดอร์",
