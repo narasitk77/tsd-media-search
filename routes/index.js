@@ -78,7 +78,11 @@ router.post('/admin/users/:email/update',   admin.requireAdmin, admin.updateUser
 router.post('/admin/users/:email/remove',   admin.requireAdmin, admin.removeUser);
 
 // ── AI Metadata Tool proxy (admin only) ──────────────────────
-router.use('/ai-tool', admin.requireAdmin, metadataProxy);
+// Restore req.url to originalUrl before proxy so pathRewrite sees the full path
+router.use('/ai-tool', admin.requireAdmin, (req, res, next) => {
+  req.url = req.originalUrl;
+  next();
+}, metadataProxy);
 
 router.get('/proxy/thumbnail/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).end();
