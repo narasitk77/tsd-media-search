@@ -5,167 +5,353 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mimir Metadata AI Tool</title>
   <script>const _ROOT = "{{ root_path | default('') }}";</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
   <style>
+    /* ── Nordic Design Tokens ── */
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161d2e;
+      --surface2:  #1c2540;
+      --border:    #242f48;
+      --border2:   #1a2338;
+      --text:      #c8d3e8;
+      --text2:     #617090;
+      --text3:     #384260;
+      --blue:      #4b82f0;
+      --blue-dim:  #151e38;
+      --blue-glow: rgba(75,130,240,.18);
+      --green:     #3d9a76;
+      --green-dim: #0d2620;
+      --red:       #c25660;
+      --red-dim:   #251018;
+      --amber:     #c49a3a;
+      --amber-dim: #241a08;
+      --radius:    10px;
+    }
+
     /* ── Base ── */
     *, *::before, *::after { box-sizing: border-box; }
-    body { background: #111; color: #f0f0f0; font-family: 'Segoe UI', sans-serif; font-size: .875rem; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: .875rem;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
 
     /* ── Navbar ── */
-    .navbar { background: #000 !important; border-bottom: 1px solid #333; }
-    .config-badge { font-size: .7rem; background: #1a1a1a; border: 1px solid #333; padding: 2px 10px; border-radius: 99px; color: #999; }
+    .navbar {
+      background: rgba(13,17,23,.92) !important;
+      border-bottom: 1px solid var(--border2) !important;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .navbar-brand { color: var(--text) !important; font-weight: 600; letter-spacing: -.02em; }
+    .config-badge {
+      font-size: .68rem; font-weight: 500;
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 3px 10px; border-radius: 99px; color: var(--text2);
+      letter-spacing: .01em;
+    }
 
-    /* ── Cards — กรอบเท่ากันทุกอัน ── */
-    .card { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; }
-    .card-footer { background: #1a1a1a; border-top: 1px solid #333; border-radius: 0 0 8px 8px; }
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.15);
+    }
+    .card-footer {
+      background: var(--surface); border-top: 1px solid var(--border2);
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+    .card-body { padding: 1.1rem; }
 
     /* ── Stat Cards ── */
-    .card-stat { transition: transform .12s; }
-    .card-stat:hover { transform: translateY(-2px); }
-    .stat-num { font-size: 2rem; font-weight: 700; letter-spacing: -.02em; }
-    .stat-label { font-size: .72rem; color: #666; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+    .card-stat { transition: transform .15s, box-shadow .15s; }
+    .card-stat:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 20px rgba(0,0,0,.3), 0 0 0 1px var(--blue) inset;
+    }
+    .stat-num {
+      font-size: 2rem; font-weight: 700; letter-spacing: -.04em;
+      color: #e8eef8; line-height: 1;
+    }
+    .stat-label {
+      font-size: .67rem; color: var(--text2); font-weight: 500;
+      text-transform: uppercase; letter-spacing: .09em; margin-top: 5px;
+    }
 
     /* ── Status Badges ── */
-    .badge-pending    { background: #2a2a2a; color: #888; border: 1px solid #444; }
-    .badge-processing { background: #1a1a2e; color: #99b4ff; border: 1px solid #334; }
-    .badge-done       { background: #0d1f0d; color: #5a5; border: 1px solid #2a4a2a; }
-    .badge-error      { background: #1f0d0d; color: #d55; border: 1px solid #4a2a2a; }
+    .badge-pending    { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); font-weight: 500; }
+    .badge-processing { background: var(--blue-dim); color: #7aaef5; border: 1px solid #1e2e55; font-weight: 500; }
+    .badge-done       { background: var(--green-dim); color: #4aad87; border: 1px solid #183828; font-weight: 500; }
+    .badge-error      { background: var(--red-dim); color: #d06870; border: 1px solid #3a1820; font-weight: 500; }
 
     /* ── Table ── */
-    .table { --bs-table-bg: transparent; --bs-table-color: #e0e0e0; }
-    .table thead th { border-color: #333; color: #666; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; background: #111; }
-    .table tbody td { border-color: #222; vertical-align: middle; font-size: .84rem; }
-    .table tbody tr:hover td { background: #222; }
+    .table { --bs-table-bg: transparent; --bs-table-color: var(--text); }
+    .table thead th {
+      border-color: var(--border2); color: var(--text2);
+      font-size: .67rem; text-transform: uppercase; letter-spacing: .09em;
+      font-weight: 600; background: var(--bg); padding: .65rem .75rem;
+    }
+    .table tbody td {
+      border-color: var(--border2); vertical-align: middle;
+      font-size: .84rem; padding: .55rem .75rem; color: var(--text);
+    }
+    .table tbody tr:hover td { background: var(--surface2); }
 
-    /* ── Thumb — size controlled by data-thumb-size on <body> ── */
-    .thumb { object-fit: cover; border-radius: 4px; border: 1px solid #333; transition: width .15s, height .15s; }
-    .thumb-placeholder { border-radius: 4px; border: 1px solid #333; background: #222; display:flex; align-items:center; justify-content:center; color:#555; transition: width .15s, height .15s; }
+    /* ── Thumbs ── */
+    .thumb {
+      object-fit: cover; border-radius: 6px;
+      border: 1px solid var(--border); transition: width .15s, height .15s;
+    }
+    .thumb-placeholder {
+      border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface2); display:flex; align-items:center;
+      justify-content:center; color: var(--text3); transition: width .15s, height .15s;
+    }
     body[data-thumb-size="s"] .thumb, body[data-thumb-size="s"] .thumb-placeholder { width:60px; height:40px; }
     body[data-thumb-size="m"] .thumb, body[data-thumb-size="m"] .thumb-placeholder { width:100px; height:67px; }
     body[data-thumb-size="l"] .thumb, body[data-thumb-size="l"] .thumb-placeholder { width:150px; height:100px; }
     body:not([data-thumb-size]) .thumb, body:not([data-thumb-size]) .thumb-placeholder { width:60px; height:40px; }
-    /* ── Video thumb wrapper ── */
     .thumb-wrap { position:relative; display:inline-block; line-height:0; }
-    .thumb-play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-                  background:rgba(0,0,0,.35); border-radius:4px; cursor:pointer; opacity:0; transition:opacity .15s; }
+    .thumb-play {
+      position:absolute; inset:0; display:flex; align-items:center;
+      justify-content:center; background:rgba(0,0,0,.45); border-radius:6px;
+      cursor:pointer; opacity:0; transition:opacity .15s;
+    }
     .thumb-wrap:hover .thumb-play { opacity:1; }
-    .thumb-play i { font-size:1.4rem; color:#fff; text-shadow:0 0 6px #000; pointer-events:none; }
-    /* ── Title columns — wrap to 2 lines, smaller font ── */
-    .title-cell { font-size:.79rem; line-height:1.35; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; max-width:180px; white-space:normal; }
-    .ai-title-cell { font-size:.79rem; line-height:1.35; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; max-width:220px; white-space:normal; color:#ccc; }
+    .thumb-play i { font-size:1.4rem; color:#fff; pointer-events:none; }
+
+    /* ── Title columns ── */
+    .title-cell {
+      font-size:.8rem; line-height:1.4; overflow:hidden;
+      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+      max-width:180px; white-space:normal; color: var(--text);
+    }
+    .ai-title-cell {
+      font-size:.8rem; line-height:1.4; overflow:hidden;
+      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+      max-width:220px; white-space:normal; color: var(--text);
+    }
 
     /* ── Buttons ── */
     .btn-action { font-size: .78rem; padding: .22rem .55rem; }
-    .filter-btn.active { background: #fff !important; color: #111 !important; border-color: #fff !important; }
+    .filter-btn { border-color: var(--border); color: var(--text2); }
+    .filter-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+    .filter-btn.active { background: var(--blue) !important; color: #fff !important; border-color: var(--blue) !important; }
+    .btn-outline-secondary { border-color: var(--border); color: var(--text2); }
+    .btn-outline-secondary:hover { background: var(--surface2); border-color: var(--border); color: var(--text); }
+    .btn-outline-warning { border-color: var(--amber); color: var(--amber); }
+    .btn-outline-warning:hover { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+    .btn-outline-danger { border-color: var(--red); color: var(--red); }
+    .btn-outline-danger:hover { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+    .btn-outline-success { border-color: var(--green); color: var(--green); }
+    .btn-outline-info { border-color: #3a7aa8; color: #5a9ac8; }
+    .btn-primary { background: var(--blue); border-color: var(--blue); font-weight: 500; }
+    .btn-primary:hover { background: #3d72e0; border-color: #3d72e0; }
 
     /* ── Progress ── */
     #progress-section { display: none; }
-    .progress { background: #1a1a1a; border-radius: 99px; box-shadow: inset 0 1px 4px #000; }
-    .progress-bar { border-radius: 99px; transition: width .4s ease; font-size: .72rem; font-weight: 600; }
-    #progress-stats { font-size: .78rem; }
-    .log-box { background: #0d0d0d; border: 1px solid #333; border-radius: 6px; padding: 10px; font-family: monospace; font-size: .77rem; max-height: 120px; overflow-y: auto; color: #888; }
-    /* Toast */
+    .progress {
+      background: var(--surface2); border-radius: 99px;
+      border: 1px solid var(--border2);
+    }
+    .progress-bar {
+      border-radius: 99px; background: var(--blue);
+      transition: width .4s ease; font-size: .7rem; font-weight: 600;
+    }
+    #progress-stats { font-size: .78rem; color: var(--text2); }
+    .log-box {
+      background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 10px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .75rem;
+      max-height: 120px; overflow-y: auto; color: var(--text2);
+      line-height: 1.55;
+    }
+
+    /* ── Toast ── */
     #batch-toast { z-index: 1100; }
-    #batch-toast .toast { min-width: 300px; }
+    #batch-toast .toast {
+      min-width: 300px; background: var(--surface);
+      border: 1px solid var(--border); color: var(--text);
+    }
 
     /* ── News items ── */
-    .news-item:hover { background: #1e2a2e !important; border-color: #0dcaf0 !important; }
+    .news-item { border-color: var(--border) !important; }
+    .news-item:hover { background: var(--blue-dim) !important; border-color: var(--blue) !important; }
+
     /* ── AI Preview ── */
-    .ai-preview { max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #ccc; }
+    .ai-preview {
+      max-width: 240px; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; color: var(--text2);
+    }
 
     /* ── Usage bar labels ── */
-    .usage-label { font-size: .69rem; color: #666; }
+    .usage-label { font-size: .67rem; color: var(--text2); }
 
     /* ── Forms ── */
-    .form-control, .form-select { background: #111 !important; border-color: #333 !important; color: #f0f0f0 !important; border-radius: 6px; }
-    .form-control:focus, .form-select:focus { border-color: #888 !important; box-shadow: 0 0 0 .15rem rgba(255,255,255,.1) !important; }
-    .form-control::placeholder { color: #444 !important; }
-    .form-select option { background: #1a1a1a; }
-    .field-edit { background: #111 !important; border-color: #333 !important; color: #f0f0f0 !important; }
-    .field-edit:focus { border-color: #888 !important; box-shadow: 0 0 0 .15rem rgba(255,255,255,.1) !important; }
+    .form-control, .form-select {
+      background: var(--bg) !important; border-color: var(--border) !important;
+      color: var(--text) !important; border-radius: 7px;
+      font-family: 'Inter', sans-serif; font-size: .84rem;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--blue) !important;
+      box-shadow: 0 0 0 .18rem var(--blue-glow) !important;
+    }
+    .form-control::placeholder { color: var(--text3) !important; }
+    .form-select option { background: var(--surface); }
+    .form-label { font-size: .78rem; font-weight: 500; color: var(--text2); margin-bottom: .3rem; }
+    .field-edit {
+      background: var(--bg) !important; border-color: var(--border) !important;
+      color: var(--text) !important; border-radius: 7px;
+    }
+    .field-edit:focus {
+      border-color: var(--blue) !important;
+      box-shadow: 0 0 0 .18rem var(--blue-glow) !important;
+    }
 
     /* ── Modal ── */
-    .modal-content { background: #1a1a1a; border: 1px solid #333; color: #f0f0f0; }
-    .modal-header { border-bottom: 1px solid #333; }
-    .modal-footer { border-top: 1px solid #333; }
-    .btn-close-white { filter: invert(1) grayscale(1); }
+    .modal-content {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5);
+    }
+    .modal-header { border-bottom: 1px solid var(--border2); padding: 1rem 1.25rem .85rem; }
+    .modal-footer { border-top: 1px solid var(--border2); padding: .85rem 1.25rem; }
+    .modal-title { font-weight: 600; font-size: .95rem; letter-spacing: -.01em; }
+    .btn-close { filter: invert(1) brightness(.55); }
+    .btn-close:hover { filter: invert(1) brightness(.8); }
 
     /* ── Section dividers in modal ── */
-    .section-title { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: #555; border-bottom: 1px solid #2a2a2a; padding-bottom: 4px; margin-bottom: 12px; }
+    .section-title {
+      font-size: .65rem; text-transform: uppercase; letter-spacing: .11em;
+      color: var(--text3); border-bottom: 1px solid var(--border2);
+      padding-bottom: 5px; margin-bottom: 14px; font-weight: 600;
+    }
 
     /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: #111; }
-    ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 
     /* ── Detail modal — large image ── */
     #modal-img-wrap {
-      position: relative; width: 100%; background: #0a0a0a;
-      border-radius: 8px; overflow: hidden; margin-bottom: 12px;
+      position: relative; width: 100%; background: var(--bg);
+      border-radius: 10px; overflow: hidden; margin-bottom: 14px;
       min-height: 80px; max-height: 480px;
       display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border2);
     }
     #modal-thumb {
       max-width: 100%; max-height: 480px; width: auto; height: auto;
-      display: block; border-radius: 6px;
+      display: block; border-radius: 8px;
     }
     #modal-play-btn {
-      position: absolute; inset: 0;
-      display: none; align-items: center; justify-content: center;
-      background: rgba(0,0,0,.35); border-radius: 8px; cursor: pointer;
+      position: absolute; inset: 0; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,.4); border-radius: 10px; cursor: pointer;
     }
-    #modal-play-btn i { font-size: 3.5rem; color: #fff; text-shadow: 0 0 20px #000; }
+    #modal-play-btn i { font-size: 3.5rem; color: #fff; }
 
     /* ── Report modal ── */
-    .report-stat-card { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 14px 18px; }
-    .report-stat-num  { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; }
-    .report-stat-lbl  { font-size: .68rem; color: #555; text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
-    .report-folder-row:hover { background: #1e1e1e !important; }
-    .report-day-bar { height: 6px; border-radius: 3px; background: #3a8a3a; min-width: 2px; }
+    .report-stat-card {
+      background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 14px 18px;
+    }
+    .report-stat-num  { font-size: 1.6rem; font-weight: 700; letter-spacing: -.03em; color: #e8eef8; }
+    .report-stat-lbl  { font-size: .65rem; color: var(--text2); text-transform: uppercase; letter-spacing: .08em; margin-top: 3px; font-weight: 500; }
+    .report-folder-row:hover { background: var(--surface2) !important; }
+    .report-day-bar { height: 5px; border-radius: 3px; background: var(--green); min-width: 2px; }
 
     /* ── Sticky toolbar ── */
-    #toolbar-bar { position: sticky; top: 0; z-index: 200; background: #111; padding-top: 8px; padding-bottom: 4px; margin-top: -4px; }
+    #toolbar-bar {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(13,17,23,.92); backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding-top: 8px; padding-bottom: 6px; margin-top: -4px;
+      border-bottom: 1px solid var(--border2);
+    }
 
     /* ── Help Drawer ── */
     #help-drawer {
       position: fixed; top: 0; right: 0; bottom: 0;
-      width: 400px; max-width: 92vw;
-      background: #161616; border-left: 1px solid #2a2a2a;
+      width: 420px; max-width: 92vw;
+      background: var(--surface); border-left: 1px solid var(--border);
       z-index: 1050; overflow-y: auto;
       transform: translateX(100%);
       transition: transform .28s cubic-bezier(.4,0,.2,1);
-      padding: 0;
     }
     #help-drawer.open { transform: translateX(0); }
     #help-overlay {
       position: fixed; inset: 0; z-index: 1049;
       background: transparent; pointer-events: none; transition: background .28s;
     }
-    #help-overlay.open { background: rgba(0,0,0,.35); pointer-events: auto; }
-    .help-section { padding: 0 20px 20px; }
-    .help-section h6 { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em;
-                       color: #555; border-bottom: 1px solid #222; padding-bottom: 6px; margin-bottom: 12px; }
-    .help-step { display: flex; gap: 10px; margin-bottom: 12px; }
-    .help-step-num { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
-                     background: #2a2a2a; border: 1px solid #444;
-                     display: flex; align-items: center; justify-content: center;
-                     font-size: .7rem; font-weight: 700; color: #aaa; }
-    .help-step-body { font-size: .82rem; color: #ccc; line-height: 1.55; }
-    .help-step-body strong { color: #e8e8e8; }
-    .help-tip { background: #1a1f1a; border: 1px solid #2a3a2a; border-radius: 6px;
-                padding: 8px 12px; font-size: .8rem; color: #8fb88f; margin-bottom: 8px; }
-    .help-tip i { color: #5a9a5a; }
-    .help-warn { background: #1f1a10; border: 1px solid #3a2a10; border-radius: 6px;
-                 padding: 8px 12px; font-size: .8rem; color: #b8956f; margin-bottom: 8px; }
-    .help-kbd { display: inline-block; background: #222; border: 1px solid #444;
-                border-radius: 3px; padding: 1px 6px; font-family: monospace; font-size: .75rem; color: #ccc; }
+    #help-overlay.open { background: rgba(0,0,0,.45); pointer-events: auto; }
+    .help-section { padding: 0 22px 22px; }
+    .help-section h6 {
+      font-size: .65rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--text3); border-bottom: 1px solid var(--border2);
+      padding-bottom: 6px; margin-bottom: 14px; font-weight: 600;
+    }
+    .help-step { display: flex; gap: 12px; margin-bottom: 14px; }
+    .help-step-num {
+      flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--blue-dim); border: 1px solid var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .68rem; font-weight: 700; color: var(--blue);
+    }
+    .help-step-body { font-size: .82rem; color: var(--text2); line-height: 1.6; }
+    .help-step-body strong { color: var(--text); font-weight: 600; }
+    .help-tip {
+      background: var(--green-dim); border: 1px solid #1a3a28;
+      border-radius: 8px; padding: 9px 13px; font-size: .8rem;
+      color: #4aad87; margin-bottom: 8px;
+    }
+    .help-tip i { color: var(--green); }
+    .help-warn {
+      background: var(--amber-dim); border: 1px solid #2e2010;
+      border-radius: 8px; padding: 9px 13px; font-size: .8rem;
+      color: #c4a050; margin-bottom: 8px;
+    }
+    .help-kbd {
+      display: inline-block; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 1px 7px; font-family: 'JetBrains Mono', monospace;
+      font-size: .73rem; color: var(--text2);
+    }
 
     /* ── Album pills ── */
-    .album-pill { font-size: .78rem; border-color: #333; color: #888; max-width: 220px; }
-    .album-pill:hover { border-color: #666; color: #ccc; }
-    .album-pill.active { background: #fff !important; color: #111 !important; border-color: #fff !important; }
+    .album-pill { font-size: .77rem; border-color: var(--border); color: var(--text2); max-width: 220px; }
+    .album-pill:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+    .album-pill.active { background: var(--blue) !important; color: #fff !important; border-color: var(--blue) !important; }
     .album-pill .pill-label { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+
+    /* ── Misc Nordic polish ── */
+    hr { border-color: var(--border2); opacity: 1; }
+    small, .text-muted { color: var(--text2) !important; }
+    .text-secondary { color: var(--text2) !important; }
+    .text-success { color: var(--green) !important; }
+    .text-danger  { color: var(--red) !important; }
+    .text-info    { color: #5a9ac8 !important; }
+    .text-warning { color: var(--amber) !important; }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82em; color: #7aaef5;
+    }
+    .dropdown-menu {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+    .dropdown-item { color: var(--text2); }
+    .dropdown-item:hover { background: var(--surface2); color: var(--text); }
   </style>
 </head>
 <body>
@@ -194,7 +380,7 @@
 
 <!-- Help Drawer -->
 <div id="help-drawer">
-  <div style="position:sticky;top:0;background:#161616;border-bottom:1px solid #222;padding:14px 20px;z-index:1;display:flex;justify-content:space-between;align-items:center">
+  <div style="position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--border2);padding:14px 20px;z-index:1;display:flex;justify-content:space-between;align-items:center">
     <span style="font-weight:600;font-size:.95rem"><i class="bi bi-book me-2" style="color:#888"></i>คู่มือการใช้งาน</span>
     <button class="btn btn-sm btn-outline-secondary" onclick="closeHelp()" style="padding:.15rem .5rem;font-size:.8rem"><i class="bi bi-x-lg"></i></button>
   </div>
@@ -253,7 +439,7 @@
     </div>
   </div>
 
-  <hr style="border-color:#222;margin:0">
+  <hr style="border-color:var(--border2);margin:0">
 
   <!-- ── Context ── -->
   <div class="help-section pt-3">
@@ -266,7 +452,7 @@
     <div class="help-warn"><i class="bi bi-exclamation-triangle me-1"></i><strong>Cross-asset context</strong> — เมื่อ batch รัน ภาพที่ 2 เป็นต้นไปในงานเดียวกันจะได้รับชื่อบุคคล/สถานที่ที่ AI ระบุได้จากภาพก่อนหน้า โดยอัตโนมัติ</div>
   </div>
 
-  <hr style="border-color:#222;margin:0">
+  <hr style="border-color:var(--border2);margin:0">
 
   <!-- ── Buttons ── -->
   <div class="help-section pt-3">
@@ -307,7 +493,7 @@
     </table>
   </div>
 
-  <hr style="border-color:#222;margin:0">
+  <hr style="border-color:var(--border2);margin:0">
 
   <!-- ── Edit Modal ── -->
   <div class="help-section pt-3">
@@ -322,7 +508,7 @@
     </ul>
   </div>
 
-  <hr style="border-color:#222;margin:0">
+  <hr style="border-color:var(--border2);margin:0">
 
   <!-- ── Status ── -->
   <div class="help-section pt-3">
@@ -335,7 +521,7 @@
     </div>
   </div>
 
-  <hr style="border-color:#222;margin:0">
+  <hr style="border-color:var(--border2);margin:0">
 
   <!-- ── Tips ── -->
   <div class="help-section pt-3">
@@ -510,7 +696,7 @@
       </div>
     </div>
     <!-- Game-style progress bar -->
-    <div class="progress mb-2" style="height:18px;border-radius:9px;background:#1a1a1a;box-shadow:inset 0 1px 4px #000">
+    <div class="progress mb-2" style="height:18px;border-radius:9px;background:var(--surface2)">
       <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-bar"
            style="width:0%;border-radius:9px;transition:width .4s ease;font-size:.72rem;font-weight:600;letter-spacing:.03em"></div>
     </div>
@@ -527,7 +713,7 @@
 
   <!-- Completion Toast (batch done) -->
   <div id="batch-toast" class="position-fixed bottom-0 end-0 p-3" style="z-index:1100;display:none">
-    <div class="toast show align-items-center text-bg-dark border border-secondary shadow-lg" role="alert">
+    <div class="toast show align-items-center border shadow-lg" role="alert" style="background:var(--surface);border-color:var(--border)!important;color:var(--text)">
       <div class="d-flex">
         <div class="toast-body" id="batch-toast-body"></div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('batch-toast').style.display='none'"></button>
@@ -582,8 +768,8 @@
 <!-- ══════════════ Video Player Modal ══════════════ -->
 <div class="modal fade" id="videoModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content bg-black border-secondary">
-      <div class="modal-header border-secondary py-2">
+    <div class="modal-content">
+      <div class="modal-header border-0 py-2">
         <span class="text-secondary small" id="video-modal-title"></span>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopVideo()"></button>
       </div>
@@ -748,7 +934,7 @@
         </div>
 
         <!-- Context for Re-analyze -->
-        <hr class="border-secondary my-3">
+        <hr class="border-0 my-3">
         <div class="mb-2 d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center gap-2">
             <span class="fw-semibold small">Re-analyze Context</span>
@@ -860,7 +1046,7 @@
         </div>
 
         <!-- Bulk Re-analyze Context -->
-        <hr class="border-secondary mt-3 mb-2">
+        <hr class="border-0 mt-3 mb-2">
         <div class="d-flex align-items-center gap-2 mb-2">
           <span class="fw-semibold small">Re-analyze Context</span>
           <span class="text-secondary small">(optional — ระบุ context แล้วกด "Run AI Batch ที่เลือก" เพื่อวิเคราะห์ใหม่ทันที)</span>
@@ -1368,7 +1554,7 @@
     const totTok = d.by_folder.reduce((a,f)=>a+f.tokens_total, 0);
     const totThb = d.by_folder.reduce((a,f)=>a+f.cost_thb, 0);
     const totUsd = d.by_folder.reduce((a,f)=>a+f.cost_usd, 0);
-    html += `<tr style="border-top:2px solid #333;font-weight:600">
+    html += `<tr style="border-top:2px solid var(--border);font-weight:600">
         <td>รวม</td>
         <td class="text-end">${s.total_assets}</td>
         <td class="text-end" style="color:#5a5">${s.total_done}</td>
@@ -2163,7 +2349,7 @@
         listDiv.innerHTML = '<div class="text-secondary small">ไม่พบข่าวที่เกี่ยวข้อง — ลองปรับ context แล้วค้นใหม่</div>';
       } else {
         listDiv.innerHTML = d.results.map((item, i) => `
-          <div class="news-item border border-secondary rounded p-2" style="cursor:pointer;font-size:.78rem"
+          <div class="news-item border rounded p-2" style="cursor:pointer;font-size:.78rem"
                onclick="appendNewsContext(${JSON.stringify(item.snippet)}, ${JSON.stringify(item.title)})">
             <div class="d-flex gap-2 align-items-start">
               <i class="bi bi-newspaper text-info mt-1" style="flex-shrink:0"></i>
@@ -2326,8 +2512,8 @@
 <!-- ── Run AI Batch Modal ────────────────────────────────────────────────── -->
 <div class="modal fade" id="batchAlbumModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content bg-dark text-light">
-      <div class="modal-header border-secondary">
+    <div class="modal-content">
+      <div class="modal-header border-0">
         <h5 class="modal-title"><i class="bi bi-stars me-2"></i>Run AI Batch — เลือก Album</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -2348,7 +2534,7 @@
           <tbody id="batch-album-tbody"></tbody>
         </table>
       </div>
-      <div class="modal-footer border-secondary justify-content-between">
+      <div class="modal-footer border-0 justify-content-between">
         <span class="small text-secondary" id="batch-album-count">เลือก 0 album</span>
         <div class="d-flex gap-2">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
@@ -2364,8 +2550,8 @@
 <!-- ── Push by Album Modal ──────────────────────────────────────────────── -->
 <div class="modal fade" id="pushAlbumModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content bg-dark text-light">
-      <div class="modal-header border-secondary">
+    <div class="modal-content">
+      <div class="modal-header border-0">
         <h5 class="modal-title"><i class="bi bi-collection me-2"></i>Push to Mimir — เลือก Album</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -2401,13 +2587,13 @@
             <span class="fw-semibold small">Push Log</span>
             <span class="small text-secondary" id="push-album-progress-txt"></span>
           </div>
-          <div class="progress mb-2" style="height:14px;border-radius:9px;background:#1a1a1a">
+          <div class="progress mb-2" style="height:14px;border-radius:9px;background:var(--surface2)">
             <div class="progress-bar progress-bar-striped progress-bar-animated" id="push-album-bar" style="width:0%;border-radius:9px;font-size:.7rem;font-weight:600"></div>
           </div>
           <div class="log-box" id="push-album-log" style="max-height:200px"></div>
         </div>
       </div>
-      <div class="modal-footer border-secondary justify-content-between">
+      <div class="modal-footer border-0 justify-content-between">
         <div class="small text-secondary" id="push-album-total-cost"></div>
         <div class="d-flex gap-2">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
@@ -2423,8 +2609,8 @@
 <!-- ── Changelog Modal ──────────────────────────────────────────────────── -->
 <div class="modal fade" id="changelogModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content bg-dark text-light">
-      <div class="modal-header border-secondary">
+    <div class="modal-content">
+      <div class="modal-header border-0">
         <h5 class="modal-title"><i class="bi bi-journal-text me-2"></i>Changelog & Roadmap</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -2462,7 +2648,7 @@
           </div>
         </div>
 
-        <hr class="border-secondary">
+        <hr class="border-0">
 
         <!-- CHANGELOG -->
         <h6 class="text-light mb-2"><i class="bi bi-clock-history me-1"></i>Changelog</h6>
@@ -2574,7 +2760,7 @@
         </div>
 
       </div>
-      <div class="modal-footer border-secondary">
+      <div class="modal-footer border-0">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
       </div>
     </div>
