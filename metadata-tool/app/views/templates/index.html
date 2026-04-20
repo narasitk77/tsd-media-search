@@ -180,6 +180,9 @@
     <a href="{{ mimir_url }}" target="_blank" class="config-badge text-decoration-none">
       <i class="bi bi-box-arrow-up-right me-1"></i>Mimir
     </a>
+    <button class="btn btn-sm btn-outline-warning" id="btn-reconnect" onclick="reconnectMimir()" title="ต่อใหม่กับ Mimir" style="padding:.2rem .6rem;font-size:.8rem">
+      <i class="bi bi-plug me-1"></i>ต่อใหม่
+    </button>
     <button class="btn btn-sm btn-outline-secondary" onclick="toggleHelp()" title="คู่มือการใช้งาน" style="padding:.2rem .6rem;font-size:.8rem">
       <i class="bi bi-question-circle me-1"></i>คู่มือ
     </button>
@@ -1997,6 +2000,35 @@
     document.querySelectorAll('.thumb-size-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     document.body.dataset.thumbSize = btn.dataset.size;
+  }
+
+  async function reconnectMimir() {
+    const btn = document.getElementById('btn-reconnect');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>กำลังต่อ...';
+    try {
+      const r = await fetch(_ROOT + '/api/reconnect', { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) {
+        btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>เชื่อมแล้ว';
+        btn.className = 'btn btn-sm btn-outline-success';
+        setTimeout(() => {
+          btn.innerHTML = '<i class="bi bi-plug me-1"></i>ต่อใหม่';
+          btn.className = 'btn btn-sm btn-outline-warning';
+          btn.disabled = false;
+        }, 3000);
+      } else {
+        throw new Error(d.detail || 'failed');
+      }
+    } catch (e) {
+      btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>' + e.message;
+      btn.className = 'btn btn-sm btn-outline-danger';
+      setTimeout(() => {
+        btn.innerHTML = '<i class="bi bi-plug me-1"></i>ต่อใหม่';
+        btn.className = 'btn btn-sm btn-outline-warning';
+        btn.disabled = false;
+      }, 4000);
+    }
   }
 
   function toggleHelp() {

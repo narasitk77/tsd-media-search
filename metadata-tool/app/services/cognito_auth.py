@@ -40,3 +40,11 @@ async def get_token() -> str:
     _token_expires_at = now + _TOKEN_TTL
     logger.info("Mimir Cognito token refreshed (valid ~55 min)")
     return token
+
+
+async def force_refresh() -> str:
+    """Clear cache and force a fresh Cognito authentication."""
+    global _cached_token, _token_expires_at
+    _cached_token = ""
+    _token_expires_at = 0.0
+    return await get_token()
