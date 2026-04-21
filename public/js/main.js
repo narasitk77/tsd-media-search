@@ -578,9 +578,6 @@ function _insertLinks() {
   if (!_gdocDocId || !_gdocLinks.length) return;
   var btn = document.getElementById('gdocInsertBtn');
   var status = document.getElementById('gdocStatus');
-  var now = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  var text = '\n\nลิงก์สื่อ The Standard — ' + now + '\n\n';
-  _gdocLinks.forEach(function (lk, i) { text += (i + 1) + '. ' + lk.title + '\n' + lk.url + '\n\n'; });
 
   btn.disabled = true;
   btn.textContent = 'กำลังแทรก...';
@@ -589,7 +586,7 @@ function _insertLinks() {
   fetch('/api/gdocs/append', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ docId: _gdocDocId, text: text }),
+    body: JSON.stringify({ docId: _gdocDocId, links: _gdocLinks }),
   }).then(function (r) { return r.json(); })
   .then(function (data) {
     if (data.ok) {

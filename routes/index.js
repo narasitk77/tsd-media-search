@@ -117,11 +117,22 @@ router.get('/api/gdocs/recent', async function (req, res) {
 router.post('/api/gdocs/append', async function (req, res) {
   const token = req.session && req.session.gToken;
   if (!token) return res.status(401).json({ ok: false, error: 'no_token' });
-  const { docId, text } = req.body || {};
+  const { docId, links } = req.body || {};
   if (!docId || !SAFE_DOC_ID.test(String(docId))) return res.status(400).json({ ok: false, error: 'invalid_doc_id' });
-  if (typeof text !== 'string' || text.length > 20_000) return res.status(400).json({ ok: false, error: 'invalid_text' });
+  if (!Array.isArray(links) || links.length === 0 || links.length > 50)
+    return res.status(400).json({ ok: false, error: 'invalid_links' });
+
+  const safeLinks = links
+    .map(lk => ({
+      title: typeof lk.title === 'string' ? lk.title.slice(0, 300) : 'ไม่มีชื่อ',
+      url:   typeof lk.url   === 'string' && lk.url.startsWith('https://') ? lk.url.slice(0, 500) : '',
+    }))
+    .filter(lk => lk.url);
+
+  if (!safeLinks.length) return res.status(400).json({ ok: false, error: 'invalid_links' });
+
   try {
-    await gdocs.appendToDoc(token, docId, text);
+    await gdocs.appendToDoc(token, docId, safeLinks);
     res.json({ ok: true });
   } catch (e) {
     const status = (e.response && e.response.status) || 502;
