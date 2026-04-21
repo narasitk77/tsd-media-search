@@ -1743,6 +1743,96 @@ a:hover { text-decoration: underline; }
 }
 
 /* ========================================================================
+   Help / User Guide Panel — v2.7.0
+   ======================================================================== */
+
+.help-section {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.help-section:last-of-type { border-bottom: none; }
+
+.help-section-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.help-section-title svg { flex-shrink: 0; color: var(--blue); }
+
+.help-steps {
+  margin: 0 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+.help-steps li::marker { color: var(--blue); font-weight: 700; }
+.help-steps strong { color: var(--text); }
+
+.help-tip {
+  margin-top: 10px;
+  padding: 9px 12px;
+  background: var(--blue-light);
+  border-left: 3px solid var(--blue);
+  border-radius: 0 7px 7px 0;
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.help-perm-table {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
+}
+.help-perm-row {
+  display: grid;
+  grid-template-columns: 1fr 1.8fr;
+  padding: 8px 12px;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.help-perm-row:last-child { border-bottom: none; }
+.help-perm-header {
+  background: var(--bg);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.help-perm-row span:first-child {
+  font-family: monospace;
+  color: var(--blue);
+  font-weight: 600;
+}
+.help-perm-header span:first-child { font-family: inherit; color: var(--text-muted); }
+
+.help-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+.help-version {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ========================================================================
    Semantic Search — v2.6.0
    ======================================================================== */
 

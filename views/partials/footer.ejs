@@ -71,6 +71,149 @@
   </div>
   <div class="cl-backdrop" id="gdocBackdrop"></div>
 
+  <!-- Help / User Guide Panel -->
+  <div class="cl-panel" id="helpPanel" aria-label="คู่มือการใช้งาน">
+    <div class="cl-panel-header">
+      <span class="cl-panel-title">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style="vertical-align:-2px;margin-right:6px">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 6c0-1.105.895-2 2-2s2 .895 2 2c0 1.333-2 2-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="8" cy="12" r="0.75" fill="currentColor"/>
+        </svg>
+        คู่มือการใช้งาน
+      </span>
+      <button class="cl-panel-close" id="helpPanelClose" aria-label="ปิด">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="cl-panel-body" id="helpPanelBody">
+
+      <!-- ── 1. ค้นหาสื่อ ── -->
+      <div class="help-section">
+        <div class="help-section-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          ค้นหาสื่อ
+        </div>
+        <ol class="help-steps">
+          <li>พิมพ์คำค้นหาในช่อง <strong>ค้นหาสื่อ…</strong> ด้านบน แล้วกด Enter</li>
+          <li>กรองตามประเภทได้ที่ chips bar: <strong>ทั้งหมด / รูปภาพ / วีดิโอ</strong></li>
+          <li>คลิกการ์ดเพื่อดูรายละเอียด ดาวน์โหลด หรือ copy ลิงก์ไฟล์</li>
+        </ol>
+        <div class="help-tip">
+          <strong>Tip:</strong> ค้นหาด้วยชื่อบุคคล สถานที่ หรือเหตุการณ์ได้เลย เช่น "นายกรัฐมนตรี ประชุม" หรือ "ประยุทธ์"
+        </div>
+      </div>
+
+      <!-- ── 2. ค้นหาขั้นสูง ── -->
+      <div class="help-section">
+        <div class="help-section-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          ค้นหาขั้นสูง
+        </div>
+        <ol class="help-steps">
+          <li>กดปุ่ม <strong>ค้นหาขั้นสูง</strong> ใน chips bar เพื่อขยาย panel</li>
+          <li>กรอกในช่องที่ต้องการ: Title, People, Description, Labels, File เป็นต้น</li>
+          <li>กรองวันที่สร้าง, ความยาววีดิโอ, หรือ location path ได้</li>
+          <li>เลือกการเรียงลำดับ และจำนวนต่อหน้า แล้วกด <strong>ค้นหา</strong></li>
+        </ol>
+      </div>
+
+      <!-- ── 3. Semantic Search ── -->
+      <div class="help-section">
+        <div class="help-section-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 8c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg>
+          Semantic Search (AI)
+        </div>
+        <ol class="help-steps">
+          <li>พิมพ์คำค้นหาก่อน แล้วกดปุ่ม <strong>Semantic</strong> (สีม่วง) ใน chips bar</li>
+          <li>ระบบค้นหาด้วย <strong>ความหมาย</strong> แทนการ match ตัวอักษร รองรับภาษาไทย-อังกฤษ</li>
+          <li>แต่ละการ์ดจะแสดง <strong>% ความเกี่ยวข้อง</strong> ที่มุมล่างขวา</li>
+          <li>กด Semantic อีกครั้งเพื่อกลับโหมดปกติ</li>
+        </ol>
+        <div class="help-tip">
+          <strong>หมายเหตุ:</strong> Semantic Search ใช้ได้เมื่อ asset ถูก index ใน Vector DB แล้วเท่านั้น (Admin ต้อง Index All ใน AI Metadata Tool ก่อน)
+        </div>
+      </div>
+
+      <!-- ── 4. เลือกหลายรายการ ── -->
+      <div class="help-section">
+        <div class="help-section-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M5 8l2.5 2.5L11 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          เลือกหลายรายการ
+        </div>
+        <ol class="help-steps">
+          <li>Hover บนการ์ด → กดวงกลม checkbox ที่มุมบนซ้ายเพื่อเลือก</li>
+          <li>เลือกหลายการ์ดได้พร้อมกัน — float bar จะลอยขึ้นด้านล่าง</li>
+          <li><strong>ดาวน์โหลด</strong> — เปิดไฟล์ต้นฉบับทุกรายการในแท็บใหม่</li>
+          <li><strong>Copy ลิงก์</strong> — copy URL ทุกไฟล์ไปยัง clipboard พร้อมกัน</li>
+          <li><strong>Google Doc</strong> — แทรกลิงก์เข้าเอกสาร Google Docs ที่เลือก</li>
+          <li>กด <strong>ยกเลิก</strong> หรือคลิก checkbox ซ้ำเพื่อยกเลิกการเลือก</li>
+        </ol>
+        <div class="help-tip">
+          <strong>Tip:</strong> กดปุ่ม <strong>เลือก</strong> (ใกล้ผลลัพธ์) เพื่อเปิดโหมด select ก็ได้ — ในโหมดนี้คลิกที่ไหนบนการ์ดก็เลือกได้เลย
+        </div>
+      </div>
+
+      <!-- ── 5. Google Docs ── -->
+      <div class="help-section">
+        <div class="help-section-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          แทรกลิงก์เข้า Google Docs
+        </div>
+        <ol class="help-steps">
+          <li>เลือกการ์ดที่ต้องการ (checkbox) แล้วกด <strong>Google Doc</strong> ใน float bar</li>
+          <li>หากยังไม่ได้เชื่อมต่อ: กด <strong>เชื่อมต่อ Google</strong> → popup เล็กเปิดขึ้น ให้อนุมัติสิทธิ์ → popup ปิดเอง</li>
+          <li>เลือก <strong>เอกสารล่าสุด</strong> จากรายการ หรือวาง URL เอกสารในช่องด้านล่าง</li>
+          <li>กด <strong>แทรกลิงก์เข้าเอกสาร</strong> — ชื่อไฟล์แต่ละรายการจะถูกแทรกเป็น hyperlink สีน้ำเงินคลิกได้</li>
+        </ol>
+        <div class="help-tip">
+          <strong>หมายเหตุ:</strong> สิทธิ์ Google Docs ผูกกับบัญชีของคุณ — คุณเห็นเฉพาะเอกสารของตัวเอง
+        </div>
+      </div>
+
+      <!-- ── 6. Browse โฟลเดอร์ ── -->
+      <div class="help-section">
+        <div class="help-section-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1 3h5l2 2h7v9H1V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          Browse โฟลเดอร์
+        </div>
+        <ol class="help-steps">
+          <li>กดปุ่ม <strong>โฟลเดอร์</strong> ใน chips bar</li>
+          <li>เลือก root folder แล้วเลือก sub-folder เพื่อดูสื่อภายใน</li>
+          <li>กรองประเภท (รูปภาพ/วีดิโอ) และ scroll ดูทีละหน้าได้</li>
+        </ol>
+      </div>
+
+      <!-- ── 7. สิทธิ์ ── -->
+      <div class="help-section">
+        <div class="help-section-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          สิทธิ์การใช้งาน
+        </div>
+        <div class="help-perm-table">
+          <div class="help-perm-row help-perm-header">
+            <span>สิทธิ์</span><span>ทำได้</span>
+          </div>
+          <div class="help-perm-row">
+            <span>canSearch</span><span>ค้นหาและดูสื่อ</span>
+          </div>
+          <div class="help-perm-row">
+            <span>canDownload</span><span>ดาวน์โหลดไฟล์ต้นฉบับ</span>
+          </div>
+          <div class="help-perm-row">
+            <span>admin</span><span>จัดการ user + AI Metadata Tool</span>
+          </div>
+        </div>
+        <p class="help-note">ติดต่อผู้ดูแลระบบ (Admin) เพื่อขอสิทธิ์เพิ่มเติม</p>
+      </div>
+
+      <p class="help-version">Mimir Media Search — Internal Use Only</p>
+    </div>
+  </div>
+  <div class="cl-backdrop" id="helpBackdrop"></div>
+
   <footer class="site-footer">
     <p>Mimir Media Search &mdash; Internal Use Only</p>
   </footer>

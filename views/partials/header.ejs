@@ -44,6 +44,15 @@
         <span>Change Logs</span>
       </button>
 
+      <button class="side-link" id="helpPanelBtn">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 6c0-1.105.895-2 2-2s2 .895 2 2c0 1.333-2 2-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="8" cy="12" r="0.75" fill="currentColor"/>
+        </svg>
+        <span>คู่มือ</span>
+      </button>
+
       <% var adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(function(e){return e.trim()}); %>
       <% if (typeof user !== 'undefined' && user && adminEmails.includes(user.email)) { %>
         <a href="/admin" class="side-link <%= (typeof activeTab !== 'undefined' && activeTab === 'admin') ? 'active' : '' %>">

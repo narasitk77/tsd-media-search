@@ -96,6 +96,41 @@ if (clBtn)   clBtn.addEventListener('click',   function () { openClPanel(); docu
 if (clClose) clClose.addEventListener('click', closeClPanel);
 if (clBdrop) clBdrop.addEventListener('click', closeClPanel);
 
+// ── Help Panel ───────────────────────────────────────────────
+function openHelpPanel() {
+  var panel = document.getElementById('helpPanel');
+  var bd    = document.getElementById('helpBackdrop');
+  if (!panel) return;
+  panel.classList.add('open');
+  if (bd) bd.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeHelpPanel() {
+  var panel = document.getElementById('helpPanel');
+  var bd    = document.getElementById('helpBackdrop');
+  if (panel) panel.classList.remove('open');
+  if (bd)    bd.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+var helpBtn   = document.getElementById('helpPanelBtn');
+var helpClose = document.getElementById('helpPanelClose');
+var helpBdrop = document.getElementById('helpBackdrop');
+if (helpBtn) helpBtn.addEventListener('click', function () {
+  openHelpPanel();
+  var sideNav    = document.getElementById('sideNav');
+  var navBackdrop = document.getElementById('navBackdrop');
+  var menuToggle  = document.getElementById('menuToggle');
+  if (sideNav)     sideNav.classList.remove('open');
+  if (navBackdrop) navBackdrop.classList.remove('show');
+  if (menuToggle)  menuToggle.classList.remove('open');
+  document.body.style.overflow = '';
+  // Re-apply after panel sets it
+  setTimeout(function () { document.body.style.overflow = 'hidden'; }, 10);
+});
+if (helpClose) helpClose.addEventListener('click', closeHelpPanel);
+if (helpBdrop) helpBdrop.addEventListener('click', closeHelpPanel);
+
 // ── Advanced Search Panel ────────────────────────────────────
 var advToggle = document.getElementById('advToggle');
 var advPanel  = document.getElementById('advPanel');
