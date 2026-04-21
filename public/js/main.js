@@ -517,7 +517,36 @@ function _loadGdocPanel() {
     var assetData = res[1];
 
     if (!gdocData.ok && gdocData.error === 'no_token') {
-      body.innerHTML = '<div style="padding:24px;text-align:center"><p style="color:var(--text-muted);margin-bottom:16px;font-size:0.9rem">กรุณา Login ใหม่เพื่อใช้ฟีเจอร์ Google Doc<br><small style="font-size:0.78rem">(ต้องอนุมัติสิทธิ์ Drive และ Docs)</small></p><a href="/logout" class="btn btn--primary">Login ใหม่</a></div>';
+      body.innerHTML = '<div class="gdoc-no-token"><p style="margin-bottom:16px">ต้องอนุญาต Google Drive & Docs<br><small>(ครั้งแรก หรือ session หมดอายุ)</small></p><button class="btn btn--primary" id="gdocAuthPopupBtn">เชื่อมต่อ Google</button></div>';
+      var authBtn = document.getElementById('gdocAuthPopupBtn');
+      if (authBtn) {
+        authBtn.addEventListener('click', function () {
+          var w = 500, h = 620;
+          var left = Math.round(screen.width  / 2 - w / 2);
+          var top  = Math.round(screen.height / 2 - h / 2);
+          var popup = window.open(
+            '/auth/google?popup=1', 'gdoc-auth',
+            'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes'
+          );
+          function onMsg(e) {
+            if (e.origin !== window.location.origin) return;
+            if (e.data && e.data.type === 'gdoc-auth-ok') {
+              window.removeEventListener('message', onMsg);
+              body.innerHTML = '<div class="cl-panel-loading"><div class="spinner"></div></div>';
+              _loadGdocPanel();
+            }
+          }
+          window.addEventListener('message', onMsg);
+          // Fallback: popup closed manually — try reloading anyway
+          var poll = setInterval(function () {
+            if (!popup || popup.closed) {
+              clearInterval(poll);
+              window.removeEventListener('message', onMsg);
+              _loadGdocPanel();
+            }
+          }, 800);
+        });
+      }
       return;
     }
 

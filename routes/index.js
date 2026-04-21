@@ -29,6 +29,10 @@ router.get('/logout', function (req, res, next) {
 });
 
 router.get('/auth/google',
+  function (req, res, next) {
+    if (req.query.popup === '1') req.session.oauthPopup = true;
+    next();
+  },
   passport.authenticate('google', {
     scope: [
       'profile',
@@ -57,6 +61,19 @@ router.get('/auth/google/callback',
     req.user.role        = record.role;
     setToken(res, req.user);
     logModel.log(req.user.email, 'login', { name: req.user.name });
+
+    // Popup OAuth (called from Google Doc panel — don't navigate the main page)
+    if (req.session.oauthPopup) {
+      delete req.session.oauthPopup;
+      return res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+<script>
+  try { window.opener && window.opener.postMessage({ type: 'gdoc-auth-ok' }, window.location.origin); }
+  catch(e) {}
+  window.close();
+</script>
+</body></html>`);
+    }
+
     const returnTo = req.session.returnTo || '/';
     delete req.session.returnTo;
     res.redirect(returnTo);
