@@ -10,6 +10,9 @@ const api = axios.create({
   timeout: config.requestTimeout,
   headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 });
+
+// Separate lightweight client for internal metadata-tool calls
+const _metaAxios = axios.create({ timeout: 10_000 });
 api.interceptors.request.use(async (cfg) => {
   Object.assign(cfg.headers, await auth.getAuthHeader());
   return cfg;
@@ -183,6 +186,47 @@ function buildSearchString(searchFields) {
   return unique.join(' ');
 }
 
+// ── Search: vector / semantic mode ────────────────────────────
+
+async function searchByVector(query, { mediaType = 'all', page = 1, pageSize = 24 } = {}) {
+  const baseUrl  = process.env.METADATA_TOOL_URL || 'http://metadata-tool:8000';
+  const itemType = (mediaType === 'image' || mediaType === 'video') ? mediaType : undefined;
+  const params   = { q: query, limit: 50 };
+  if (itemType) params.item_type = itemType;
+
+  const r   = await _metaAxios.get(`${baseUrl}/api/vector/search`, { params });
+  const raw = (r.data && r.data.results) || [];
+
+  const items = raw.map(v => ({
+    id:           v.item_id,
+    mediaType:    v.item_type  || 'image',
+    title:        v.title      || 'ไม่มีชื่อ',
+    thumbnail:    `/proxy/thumbnail/${v.item_id}`,
+    created:      v.media_created_on || null,
+    modified:     null,
+    duration:     null,
+    fileSize:     null,
+    category:     null,
+    mimeType:     null,
+    sourcePath:   null,
+    rootFolder:   null,
+    photographer: v.ai_persons || null,
+    score:        v.score,
+  }));
+
+  const start = (page - 1) * pageSize;
+  return {
+    items:      items.slice(start, start + pageSize),
+    total:      items.length,
+    apiTotal:   items.length,
+    fetched:    items.length,
+    exhausted:  true,
+    page, pageSize,
+    totalPages: Math.max(1, Math.ceil(items.length / pageSize)),
+    mode:       'semantic',
+  };
+}
+
 // ── Search: keyword mode (regular API) ────────────────────────
 
 async function searchByKeyword(opts) {
@@ -351,6 +395,7 @@ async function searchAssets(opts) {
     locationFilter               = '',
     sortBy                       = 'date',
     sortOrder                    = 'desc',
+    semantic                     = false,
   } = opts;
 
   // Build effective search string from all text fields
@@ -359,6 +404,11 @@ async function searchAssets(opts) {
     searchDescription, searchTranscript, searchLabels,
     searchMetadata, searchFile, searchDetectedText,
   });
+
+  // Semantic / vector search mode
+  if (semantic && effectiveSearch) {
+    return searchByVector(effectiveSearch, { mediaType, page, pageSize });
+  }
 
   const hasAdvancedFilters = dateFrom || dateTo ||
     (durationMin !== null && durationMin !== '') ||

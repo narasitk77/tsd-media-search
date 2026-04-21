@@ -1,5 +1,18 @@
 [
   {
+    "version": "2.6.0",
+    "date": "2026-04-21",
+    "title": "Semantic Search — ค้นหาด้วยความหมาย AI บนหน้าหลัก",
+    "entries": [
+      { "type": "added", "text": "ปุ่ม 'Semantic' ใน chips bar — กดเพื่อสลับโหมด semantic/keyword search ได้ทันที" },
+      { "type": "added", "text": "Semantic mode ใช้ Vector DB (Qdrant + fastembed) ค้นหาด้วยความหมาย รองรับภาษาไทย-อังกฤษ" },
+      { "type": "added", "text": "แสดง badge 'Semantic' บน results header และ score (%) บนการ์ดแต่ละใบ" },
+      { "type": "added", "text": "พารามิเตอร์ semantic=1 ถูก preserve ตลอด: pagination, type chips, form submit" },
+      { "type": "added", "text": "Error message เฉพาะเมื่อ metadata-tool ยังไม่พร้อม (Qdrant ยังไม่ได้ index)" },
+      { "type": "added", "text": "เพิ่ม METADATA_TOOL_URL ใน .env.example" }
+    ]
+  },
+  {
     "version": "2.5.0",
     "date": "2026-04-21",
     "title": "Multi-select & Google Docs Integration",

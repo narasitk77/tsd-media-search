@@ -1743,6 +1743,64 @@ a:hover { text-decoration: underline; }
 }
 
 /* ========================================================================
+   Semantic Search — v2.6.0
+   ======================================================================== */
+
+/* Semantic chip uses same .chip base, just purple accent */
+.chip--semantic.chip--active {
+  background: #7c3aed;
+  color: #fff;
+  border-color: #7c3aed;
+}
+.chip--semantic:not(.chip--active):hover {
+  background: #f3f0ff;
+  color: #7c3aed;
+  border-color: #c4b5fd;
+}
+[data-theme="dark"] .chip--semantic.chip--active {
+  background: #7c3aed;
+  color: #fff;
+  border-color: #7c3aed;
+}
+[data-theme="dark"] .chip--semantic:not(.chip--active):hover {
+  background: #2d1b69;
+  color: #c4b5fd;
+  border-color: #7c3aed;
+}
+
+/* "Semantic" badge in results count */
+.semantic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  vertical-align: middle;
+  margin-right: 2px;
+  text-transform: uppercase;
+}
+
+/* Score badge on card thumbnail */
+.card-score-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(124,58,237,0.85);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 5px;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+/* ========================================================================
    Multi-select + Google Docs — v2.5.0
    ======================================================================== */
 

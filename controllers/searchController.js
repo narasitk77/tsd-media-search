@@ -71,6 +71,7 @@ async function search(req, res) {
   const sortOrder        = VALID_SORT_ORDER.has(req.query.sortOrder) ? req.query.sortOrder : 'desc';
   const pageSize         = VALID_PAGE_SIZES.has(parseInt(req.query.pageSize, 10))
     ? parseInt(req.query.pageSize, 10) : 24;
+  const semantic         = req.query.semantic === '1';
 
   try {
     const data = await mimirModel.searchAssets({
@@ -81,6 +82,7 @@ async function search(req, res) {
       mediaType, page, pageSize,
       dateFrom, dateTo, durationMin, durationMax,
       locationFilter, sortBy, sortOrder,
+      semantic,
     });
 
     // Build a display query label for the results header
@@ -114,16 +116,19 @@ async function search(req, res) {
       searchFile, searchDetectedText,
       dateFrom, dateTo, durationMin, durationMax,
       locationFilter, sortBy, sortOrder, pageSize,
-      displayQuery,
+      displayQuery, semantic,
       stats: null,
       error: null,
     });
   } catch (err) {
     console.error('[searchController] error:', err.message);
     const status = err.response && err.response.status;
-    const msg    = (status === 401 || status === 403)
-      ? 'API ไม่มีสิทธิ์เข้าถึง กรุณาติดต่อผู้ดูแลระบบ'
-      : 'ไม่สามารถเชื่อมต่อ Mimir ได้ กรุณาลองใหม่อีกครั้ง';
+    const isVectorDown = semantic && !status;
+    const msg    = isVectorDown
+      ? 'Semantic Search ยังไม่พร้อม กรุณา index ข้อมูลใน AI Metadata Tool ก่อน'
+      : (status === 401 || status === 403)
+        ? 'API ไม่มีสิทธิ์เข้าถึง กรุณาติดต่อผู้ดูแลระบบ'
+        : 'ไม่สามารถเชื่อมต่อ Mimir ได้ กรุณาลองใหม่อีกครั้ง';
     res.render('index', {
       title: 'Mimir Media Search', results: [], query: q, mediaType,
       page: 1, totalPages: 0, total: 0, apiTotal: 0,
@@ -133,7 +138,7 @@ async function search(req, res) {
       searchFile, searchDetectedText,
       dateFrom, dateTo, durationMin, durationMax,
       locationFilter, sortBy, sortOrder, pageSize,
-      displayQuery: q, stats: null, error: msg,
+      displayQuery: q, semantic, stats: null, error: msg,
     });
   }
 }

@@ -6,12 +6,14 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
   searchLabels || searchMetadata || searchFile || searchDetectedText ||
   dateFrom || dateTo || durationMin || durationMax || locationFilter ||
   sortBy !== 'date' || sortOrder !== 'desc' || pageSize !== 24;
+
+var isSemantic = typeof semantic !== 'undefined' && !!semantic;
 %>
 
 <!-- ── YouTube-style chips bar ───────────────────────────────── -->
 <%
   var qEnc = query ? encodeURIComponent(query) : '';
-  var chipBase = '/search?q=' + qEnc;
+  var chipBase = '/search?q=' + qEnc + (isSemantic ? '&semantic=1' : '');
 %>
 <div class="chips-bar-wrap">
   <div class="chips-bar">
@@ -51,6 +53,19 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
       </svg>
       ค้นหาขั้นสูง
     </button>
+
+    <% if (query) { %>
+      <% var semanticToggleUrl = '/search?q=' + qEnc + '&type=' + mediaType + (isSemantic ? '' : '&semantic=1'); %>
+      <a href="<%= semanticToggleUrl %>" class="chip chip--semantic <%= isSemantic ? 'chip--active' : '' %>"
+         title="<%= isSemantic ? 'ปิด Semantic Search' : 'เปิด Semantic Search (ค้นหาด้วยความหมาย AI)' %>">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5.5 8c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="8" cy="8" r="1" fill="currentColor"/>
+        </svg>
+        Semantic
+      </a>
+    <% } %>
   </div>
 </div>
 
@@ -79,6 +94,7 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
   <form class="search-form" id="searchForm" action="/search" method="GET" role="search">
     <input type="hidden" name="q" id="searchInput" value="<%= query %>">
     <input type="hidden" name="type" value="<%= mediaType %>">
+    <% if (isSemantic) { %><input type="hidden" name="semantic" value="1"><% } %>
 
     <!-- Advanced Search Panel -->
     <div class="adv-panel" id="advPanel" <%= !hasAdvanced ? 'hidden' : '' %>>
@@ -320,6 +336,7 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
       <div class="results-meta">
         <div class="results-meta-row">
           <p class="results-count" id="resultsCount">
+            <% if (isSemantic) { %><span class="semantic-badge">Semantic</span> <% } %>
             พบ <strong><%= total.toLocaleString() %></strong> รายการ
           <% if (typeof displayQuery !== 'undefined' && displayQuery) { %> สำหรับ "<strong><%= displayQuery %></strong>"<% } %>
           <% if (!exhausted && fetched < total) { %>
@@ -402,6 +419,9 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
             <div class="card-type-badge card-type-badge--<%= asset.mediaType %>">
               <%= asset.mediaType === 'video' ? 'Video' : 'Image' %>
             </div>
+            <% if (isSemantic && asset.score != null) { %>
+              <div class="card-score-badge"><%= Math.round(asset.score * 100) %>%</div>
+            <% } %>
           </div>
           <div class="card-body">
             <p class="card-title"><%= asset.title %></p>
@@ -445,7 +465,8 @@ var hasAdvanced = searchTitle || searchPeople || searchDescription || searchTran
         + (locationFilter    ? '&locationFilter='    + encP(locationFilter)    : '')
         + (sortBy    !== 'date' ? '&sortBy='    + sortBy    : '')
         + (sortOrder !== 'desc' ? '&sortOrder=' + sortOrder : '')
-        + (pageSize  !== 24    ? '&pageSize='   + pageSize  : '');
+        + (pageSize  !== 24    ? '&pageSize='   + pageSize  : '')
+        + (isSemantic           ? '&semantic=1'             : '');
     %>
 
     <% if (totalPages > 1) { %>
