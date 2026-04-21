@@ -220,10 +220,35 @@ function renderModal(asset) {
   // ── Media area ──────────────────────────────────────────────
   if (asset.mediaType === 'video' && asset.previewUrl) {
     modalMedia.innerHTML =
-      '<video controls autoplay muted playsinline style="width:100%;max-height:55vh;background:#000">' +
-        '<source src="' + escHtml(asset.previewUrl) + '" type="video/mp4" />' +
+      '<video id="mv" controls autoplay muted playsinline style="width:100%;max-height:55vh;background:#000">' +
+        '<source id="mvSrc" src="' + escHtml(asset.previewUrl) + '" />' +
         (asset.vttUrl ? '<track kind="subtitles" src="' + escHtml(asset.vttUrl) + '" default />' : '') +
-      '</video>';
+      '</video>' +
+      '<div id="mvErr" style="display:none;padding:28px 20px;text-align:center;background:#111;color:#aaa">' +
+        '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" style="margin-bottom:10px;opacity:.5"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M10 8l6 4-6 4V8z" fill="currentColor"/><line x1="4" y1="4" x2="20" y2="20" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round"/></svg>' +
+        '<p style="margin:0 0 6px;font-size:.88rem;color:#ccc">ไม่สามารถเล่นวีดิโอในเบราว์เซอร์ได้</p>' +
+        '<p style="margin:0 0 16px;font-size:.75rem;opacity:.7">รูปแบบไฟล์ไม่รองรับการเล่นออนไลน์ (เช่น MXF, ProRes)</p>' +
+        '<a href="' + escHtml(asset.previewUrl) + '" target="_blank" rel="noopener" ' +
+          'style="display:inline-block;padding:7px 16px;background:#0066cc;color:#fff;border-radius:8px;font-size:.82rem;text-decoration:none">เปิดไฟล์โดยตรง</a>' +
+      '</div>';
+
+    // Attach error handler after element is in DOM
+    var _mv    = document.getElementById('mv');
+    var _mvSrc = document.getElementById('mvSrc');
+    var _mvErr = document.getElementById('mvErr');
+    function _showVideoErr() {
+      if (_mv)    _mv.style.display    = 'none';
+      if (_mvErr) _mvErr.style.display = 'block';
+    }
+    if (_mv)    _mv.addEventListener('error',   _showVideoErr);
+    if (_mvSrc) _mvSrc.addEventListener('error', _showVideoErr);
+    // Fallback timeout: if video hasn't started loading after 8s, show error
+    if (_mv) {
+      var _mvTimer = setTimeout(function () {
+        if (_mv && _mv.readyState === 0 && _mv.networkState !== 1) _showVideoErr();
+      }, 8000);
+      _mv.addEventListener('loadedmetadata', function () { clearTimeout(_mvTimer); });
+    }
   } else if (asset.previewUrl) {
     modalMedia.innerHTML =
       '<img src="' + escHtml(asset.previewUrl) + '" alt="' + escHtml(asset.title) +
