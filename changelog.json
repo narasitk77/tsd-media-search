@@ -1,5 +1,19 @@
 [
   {
+    "version": "2.4.0",
+    "date": "2026-04-21",
+    "title": "Vector Search — ค้นหาเชิงความหมายด้วย Qdrant",
+    "entries": [
+      { "type": "added", "text": "เพิ่ม Qdrant Vector Database เป็น Docker service ใหม่ใน docker-compose.yml — ข้อมูลเก็บใน ./data/qdrant" },
+      { "type": "added", "text": "Semantic search API: GET /ai-tool/api/vector/search?q=... — ค้นหาด้วยความหมาย รองรับภาษาไทยและอังกฤษ" },
+      { "type": "added", "text": "Index API: POST /ai-tool/api/vector/index/{item_id} — index asset เดี่ยว และ POST /ai-tool/api/vector/index-all — index ทั้งหมดที่ done" },
+      { "type": "added", "text": "Stats API: GET /ai-tool/api/vector/stats — แสดงจำนวน vectors ใน collection" },
+      { "type": "added", "text": "Auto-index: asset ที่ผ่าน AI analyze (reanalyze) จะถูก index เข้า Vector DB อัตโนมัติ" },
+      { "type": "added", "text": "Embedding model: paraphrase-multilingual-MiniLM-L12-v2 ผ่าน fastembed (ONNX) — ไม่ต้อง PyTorch, รองรับ 50+ ภาษา" },
+      { "type": "added", "text": "QDRANT_URL และ QDRANT_COLLECTION เพิ่มใน .env.example" }
+    ]
+  },
+  {
     "version": "2.3.0",
     "date": "2026-04-17",
     "title": "AI Metadata Tool — รวมเครื่องมือใส่ Metadata ด้วย AI",

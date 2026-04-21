@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.database import Base, engine, run_migrations
 from app.views.routes import router
+from app.services import vector_service as _vs
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
 
@@ -12,6 +13,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     run_migrations()
+    # Initialize Qdrant collection (non-fatal if Qdrant not yet available)
+    try:
+        _vs.init_collection()
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Qdrant not available at startup (will retry on first use): {e}")
     # Reset assets stuck in "processing" from a previous crashed run
     from app.database import SessionLocal
     from app.models.asset import Asset

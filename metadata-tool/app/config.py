@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     # Sub-path when running behind a reverse proxy (e.g. "/ai-tool" — no trailing slash)
     APP_ROOT_PATH: str = ""
 
+    # Qdrant Vector DB
+    QDRANT_URL: str = "http://qdrant:6333"
+    QDRANT_COLLECTION: str = "mimir_assets"
+
     class Config:
         env_file = ".env"
 

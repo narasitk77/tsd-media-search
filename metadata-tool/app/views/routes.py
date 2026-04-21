@@ -755,6 +755,10 @@ async def reanalyze_asset(item_id: str, body: ReanalyzeRequest, db: Session = De
         asset.error_log              = ""
         db.commit()
         db.refresh(asset)
+        try:
+            _vs.index_asset(asset)
+        except Exception as ve:
+            logger.warning(f"Vector index skipped for {item_id}: {ve}")
         return {"ok": True, "asset": asset.to_dict()}
     except Exception as exc:
         logger.error(f"Reanalyze error for {item_id}: {exc}", exc_info=True)
@@ -1078,6 +1082,70 @@ async def debug_mimir_schema():
             except Exception as e:
                 results[path] = {"error": str(e)}
     return results
+
+
+from app.services import vector_service as _vs
+
+
+# ── API: Vector Search (Qdrant) ────────────────────────────────────────────────
+
+@router.get("/api/vector/stats")
+async def vector_stats():
+    """สถิติ Vector DB — จำนวน vectors ที่ index แล้ว."""
+    try:
+        return _vs.collection_info()
+    except Exception as e:
+        return {"vectors_count": 0, "points_count": 0, "status": "unavailable", "error": str(e)}
+
+
+@router.get("/api/vector/search")
+async def vector_search(q: str, limit: int = 20, item_type: Optional[str] = None):
+    """Semantic search ด้วย Vector DB — รองรับภาษาไทยและอังกฤษ."""
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Query is required")
+    try:
+        results = _vs.search(q.strip(), limit=min(limit, 100), item_type=item_type or None)
+        return {"query": q, "results": results, "count": len(results)}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Vector search error: {e}")
+
+
+@router.post("/api/vector/index/{item_id}")
+async def vector_index_one(item_id: str, db: Session = Depends(get_db)):
+    """Index asset เดี่ยวเข้า Vector DB."""
+    asset = db.query(Asset).filter(Asset.item_id == item_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    try:
+        ok = _vs.index_asset(asset)
+        return {"ok": ok, "item_id": item_id}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Vector index error: {e}")
+
+
+@router.post("/api/vector/index-all")
+async def vector_index_all(db: Session = Depends(get_db)):
+    """Index assets ทั้งหมดที่ status=done เข้า Vector DB."""
+    assets = db.query(Asset).filter(Asset.status == "done").all()
+    indexed = errors = 0
+    for asset in assets:
+        try:
+            if _vs.index_asset(asset):
+                indexed += 1
+        except Exception as e:
+            errors += 1
+            logger.warning(f"Vector index error for {asset.item_id}: {e}")
+    return {"ok": True, "indexed": indexed, "errors": errors, "total": len(assets)}
+
+
+@router.delete("/api/vector/{item_id}")
+async def vector_delete(item_id: str):
+    """ลบ asset ออกจาก Vector index."""
+    try:
+        _vs.delete_asset(item_id)
+        return {"ok": True, "item_id": item_id}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Vector delete error: {e}")
 
 
 @router.post("/api/assets/{item_id}/push")
