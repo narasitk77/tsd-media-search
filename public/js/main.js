@@ -262,6 +262,26 @@ if (modal) {
 }
 
 document.querySelectorAll('.media-card').forEach(function (card) {
+  // Clicking the checkbox indicator always toggles selection (auto-enters select mode)
+  var indicator = card.querySelector('.card-select-indicator');
+  if (indicator) {
+    indicator.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleCardSelection(card);
+      if (_selectedIds.size > 0 && !_selectMode) {
+        _selectMode = true;
+        var grid = document.getElementById('mediaGrid');
+        if (grid) grid.classList.add('select-mode');
+        if (selectToggle) {
+          selectToggle.classList.add('chip--active');
+          selectToggle.setAttribute('aria-pressed', 'true');
+          selectToggle.querySelector('.select-toggle-label').textContent = 'ยกเลิกเลือก';
+        }
+      }
+    });
+  }
+
+  // Clicking the card body: if in select mode → toggle; else → open modal
   card.addEventListener('click', function () {
     if (_selectMode) { toggleCardSelection(this); }
     else { openModal(this.dataset.id); }
@@ -360,7 +380,7 @@ function _syncSelectBar() {
   var bar = document.getElementById('selectBar');
   if (!bar) return;
   document.getElementById('selectCount').textContent = _selectedIds.size + ' รายการ';
-  if (_selectMode && _selectedIds.size > 0) { bar.removeAttribute('hidden'); }
+  if (_selectedIds.size > 0) { bar.removeAttribute('hidden'); }
   else { bar.setAttribute('hidden', ''); }
 }
 
@@ -454,8 +474,14 @@ function openGdocPanel() {
   var bd    = document.getElementById('gdocBackdrop');
   if (!panel) return;
   panel.classList.add('open');
-  bd.classList.add('show');
-  document.body.style.overflow = 'hidden';
+  if (window.innerWidth >= 900) {
+    // Desktop: push content to the left (split view), no overlay
+    document.body.classList.add('gdoc-split');
+  } else {
+    // Mobile: overlay with backdrop
+    if (bd) bd.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
   _loadGdocPanel();
 }
 function closeGdocPanel() {
@@ -463,6 +489,7 @@ function closeGdocPanel() {
   var bd    = document.getElementById('gdocBackdrop');
   if (panel) panel.classList.remove('open');
   if (bd)    bd.classList.remove('show');
+  document.body.classList.remove('gdoc-split');
   document.body.style.overflow = '';
 }
 
