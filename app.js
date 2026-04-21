@@ -56,10 +56,11 @@ passport.use(new GoogleStrategy(
     }
 
     return done(null, {
-      id:    profile.id,
+      id:      profile.id,
       email,
-      name:  profile.displayName,
-      photo: profile.photos && profile.photos[0] && profile.photos[0].value,
+      name:    profile.displayName,
+      photo:   profile.photos && profile.photos[0] && profile.photos[0].value,
+      _gToken: accessToken,  // extracted to session in OAuth callback; not stored in JWT
     });
   }
 ));

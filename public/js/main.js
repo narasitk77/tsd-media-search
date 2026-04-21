@@ -262,9 +262,16 @@ if (modal) {
 }
 
 document.querySelectorAll('.media-card').forEach(function (card) {
-  card.addEventListener('click', function () { openModal(this.dataset.id); });
+  card.addEventListener('click', function () {
+    if (_selectMode) { toggleCardSelection(this); }
+    else { openModal(this.dataset.id); }
+  });
   card.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(this.dataset.id); }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (_selectMode) { toggleCardSelection(this); }
+      else { openModal(this.dataset.id); }
+    }
   });
 });
 
@@ -312,4 +319,315 @@ function formatDuration(s) {
   var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
   function pad(n) { return n < 10 ? '0' + n : String(n); }
   return h > 0 ? h + ':' + pad(m) + ':' + pad(sec) : m + ':' + pad(sec);
+}
+
+// ── Multi-select ──────────────────────────────────────────────
+var _selectedIds = new Set();
+var _selectMode  = false;
+var _gdocDocId   = null;
+var _gdocLinks   = [];
+
+var selectToggle = document.getElementById('selectToggle');
+if (selectToggle) {
+  selectToggle.addEventListener('click', function () {
+    _selectMode = !_selectMode;
+    if (!_selectMode) {
+      _selectedIds.clear();
+      document.querySelectorAll('.media-card--selected').forEach(function (c) { c.classList.remove('media-card--selected'); });
+    }
+    var grid = document.getElementById('mediaGrid');
+    if (grid) grid.classList.toggle('select-mode', _selectMode);
+    selectToggle.classList.toggle('chip--active', _selectMode);
+    selectToggle.setAttribute('aria-pressed', _selectMode ? 'true' : 'false');
+    selectToggle.querySelector('.select-toggle-label').textContent = _selectMode ? 'ยกเลิกเลือก' : 'เลือก';
+    _syncSelectBar();
+  });
+}
+
+function toggleCardSelection(card) {
+  var id = card.dataset.id;
+  if (_selectedIds.has(id)) {
+    _selectedIds.delete(id);
+    card.classList.remove('media-card--selected');
+  } else {
+    _selectedIds.add(id);
+    card.classList.add('media-card--selected');
+  }
+  _syncSelectBar();
+}
+
+function _syncSelectBar() {
+  var bar = document.getElementById('selectBar');
+  if (!bar) return;
+  document.getElementById('selectCount').textContent = _selectedIds.size + ' รายการ';
+  if (_selectMode && _selectedIds.size > 0) { bar.removeAttribute('hidden'); }
+  else { bar.setAttribute('hidden', ''); }
+}
+
+// ── Float bar actions ─────────────────────────────────────────
+var _dlBtn     = document.getElementById('selectDownloadBtn');
+var _copyBtn   = document.getElementById('selectCopyBtn');
+var _gdocBtn   = document.getElementById('selectGdocBtn');
+var _cancelBtn = document.getElementById('selectCancelBtn');
+
+if (_dlBtn) {
+  _dlBtn.addEventListener('click', function () {
+    var ids = Array.from(_selectedIds);
+    if (!ids.length) return;
+    _dlBtn.disabled = true;
+    _dlBtn.textContent = 'กำลังโหลด...';
+    Promise.all(ids.map(function (id) {
+      return fetch('/asset/' + encodeURIComponent(id)).then(function (r) { return r.json(); }).catch(function () { return null; });
+    })).then(function (results) {
+      var count = 0;
+      results.forEach(function (data, i) {
+        if (data && data.success && data.asset) {
+          var url = data.asset.highResUrl || data.asset.previewUrl;
+          if (url) {
+            setTimeout(function () { window.open(url, '_blank', 'noopener'); }, i * 150);
+            fetch('/log/download', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ assetId: data.asset.id, title: data.asset.title, mediaType: data.asset.mediaType }) });
+            count++;
+          }
+        }
+      });
+      showToast('เปิดดาวน์โหลด ' + count + ' รายการ (อนุญาต pop-up หากถูกบล็อก)');
+    }).catch(function () { showToast('เกิดข้อผิดพลาด', 'error'); })
+    .finally(function () {
+      _dlBtn.disabled = false;
+      _dlBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M5 8l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> ดาวน์โหลด';
+    });
+  });
+}
+
+if (_copyBtn) {
+  _copyBtn.addEventListener('click', function () {
+    var ids = Array.from(_selectedIds);
+    if (!ids.length) return;
+    _copyBtn.disabled = true;
+    _copyBtn.textContent = 'กำลังโหลด...';
+    Promise.all(ids.map(function (id) {
+      return fetch('/asset/' + encodeURIComponent(id)).then(function (r) { return r.json(); }).catch(function () { return null; });
+    })).then(function (results) {
+      var lines = [];
+      results.forEach(function (data) {
+        if (data && data.success && data.asset) {
+          var url = data.asset.highResUrl || data.asset.previewUrl;
+          if (url) lines.push((data.asset.title || 'ไม่มีชื่อ') + '\n' + url);
+        }
+      });
+      var text = lines.join('\n\n');
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function () {
+          showToast('Copy ลิงก์ ' + lines.length + ' รายการแล้ว');
+        }).catch(function () { showToast('Copy ไม่ได้', 'error'); });
+      }
+    }).catch(function () { showToast('เกิดข้อผิดพลาด', 'error'); })
+    .finally(function () {
+      _copyBtn.disabled = false;
+      _copyBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M6 3a1 1 0 00-1 1v8a1 1 0 001 1h7a1 1 0 001-1V7l-3-4H6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 3v4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M3 5H2a1 1 0 00-1 1v8a1 1 0 001 1h7a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Copy ลิงก์';
+    });
+  });
+}
+
+if (_gdocBtn) { _gdocBtn.addEventListener('click', openGdocPanel); }
+
+if (_cancelBtn) {
+  _cancelBtn.addEventListener('click', function () {
+    _selectMode = false;
+    _selectedIds.clear();
+    document.querySelectorAll('.media-card--selected').forEach(function (c) { c.classList.remove('media-card--selected'); });
+    var grid = document.getElementById('mediaGrid');
+    if (grid) grid.classList.remove('select-mode');
+    if (selectToggle) {
+      selectToggle.classList.remove('chip--active');
+      selectToggle.setAttribute('aria-pressed', 'false');
+      selectToggle.querySelector('.select-toggle-label').textContent = 'เลือก';
+    }
+    _syncSelectBar();
+  });
+}
+
+// ── Google Doc Panel ──────────────────────────────────────────
+function openGdocPanel() {
+  var panel = document.getElementById('gdocPanel');
+  var bd    = document.getElementById('gdocBackdrop');
+  if (!panel) return;
+  panel.classList.add('open');
+  bd.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  _loadGdocPanel();
+}
+function closeGdocPanel() {
+  var panel = document.getElementById('gdocPanel');
+  var bd    = document.getElementById('gdocBackdrop');
+  if (panel) panel.classList.remove('open');
+  if (bd)    bd.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+var _gdocClose = document.getElementById('gdocPanelClose');
+var _gdocBd    = document.getElementById('gdocBackdrop');
+if (_gdocClose) _gdocClose.addEventListener('click', closeGdocPanel);
+if (_gdocBd)    _gdocBd.addEventListener('click', closeGdocPanel);
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { closeGdocPanel(); }
+});
+
+function _loadGdocPanel() {
+  var body = document.getElementById('gdocPanelBody');
+  if (!body) return;
+  body.innerHTML = '<div class="cl-panel-loading"><div class="spinner"></div></div>';
+
+  var ids = Array.from(_selectedIds);
+  Promise.all([
+    fetch('/api/gdocs/recent').then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'fetch_failed', docs: [] }; }),
+    Promise.all(ids.map(function (id) {
+      return fetch('/asset/' + encodeURIComponent(id)).then(function (r) { return r.json(); }).catch(function () { return null; });
+    }))
+  ]).then(function (res) {
+    var gdocData  = res[0];
+    var assetData = res[1];
+
+    if (!gdocData.ok && gdocData.error === 'no_token') {
+      body.innerHTML = '<div style="padding:24px;text-align:center"><p style="color:var(--text-muted);margin-bottom:16px;font-size:0.9rem">กรุณา Login ใหม่เพื่อใช้ฟีเจอร์ Google Doc<br><small style="font-size:0.78rem">(ต้องอนุมัติสิทธิ์ Drive และ Docs)</small></p><a href="/logout" class="btn btn--primary">Login ใหม่</a></div>';
+      return;
+    }
+
+    _gdocLinks = [];
+    assetData.forEach(function (data) {
+      if (data && data.success && data.asset) {
+        var url = data.asset.highResUrl || data.asset.previewUrl;
+        if (url) _gdocLinks.push({ title: data.asset.title || 'ไม่มีชื่อ', url: url });
+      }
+    });
+
+    body.innerHTML = _renderGdocContent(gdocData.docs || [], _gdocLinks);
+    _setupGdocEvents();
+  }).catch(function () {
+    body.innerHTML = '<p style="color:var(--error);padding:20px">โหลดไม่สำเร็จ</p>';
+  });
+}
+
+function _renderGdocContent(docs, links) {
+  var html = '';
+
+  if (docs.length > 0) {
+    html += '<div class="gdoc-section"><div class="gdoc-section-title">เอกสารล่าสุด</div><ul class="gdoc-doc-list" id="gdocDocList">';
+    docs.forEach(function (doc) {
+      html += '<li class="gdoc-doc-item" data-docid="' + escHtml(doc.id) + '">' +
+        '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" style="flex-shrink:0"><rect x="2" y="1" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' +
+        '<span class="gdoc-doc-name">' + escHtml(doc.name) + '</span></li>';
+    });
+    html += '</ul></div>';
+  }
+
+  html += '<div class="gdoc-section"><div class="gdoc-section-title">หรือวาง URL เอกสาร</div>' +
+    '<input type="text" class="adv-input" id="gdocUrlInput" placeholder="https://docs.google.com/document/d/..." autocomplete="off" style="width:100%;box-sizing:border-box" /></div>';
+
+  html += '<div class="gdoc-section"><div class="gdoc-section-title">ลิงก์ที่จะแทรก (' + links.length + ' รายการ)</div>';
+  if (links.length > 0) {
+    html += '<ol class="gdoc-links-list">';
+    links.forEach(function (lk) { html += '<li><span class="gdoc-link-title">' + escHtml(lk.title) + '</span></li>'; });
+    html += '</ol>';
+  } else {
+    html += '<p style="color:var(--text-muted);font-size:0.85rem">ยังไม่ได้เลือก asset</p>';
+  }
+  html += '</div>';
+
+  html += '<div class="gdoc-actions">' +
+    '<button type="button" class="btn btn--primary" id="gdocInsertBtn" disabled>แทรกลิงก์เข้าเอกสาร</button>' +
+    '<p class="gdoc-status" id="gdocStatus"></p></div>';
+
+  return html;
+}
+
+function _setupGdocEvents() {
+  _gdocDocId = null;
+  var list = document.getElementById('gdocDocList');
+  if (list) {
+    list.querySelectorAll('.gdoc-doc-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        list.querySelectorAll('.gdoc-doc-item').forEach(function (i) { i.classList.remove('gdoc-doc-item--active'); });
+        item.classList.add('gdoc-doc-item--active');
+        _gdocDocId = item.dataset.docid;
+        var urlInput = document.getElementById('gdocUrlInput');
+        if (urlInput) urlInput.value = '';
+        _updateGdocBtn();
+      });
+    });
+  }
+  var urlInput = document.getElementById('gdocUrlInput');
+  if (urlInput) {
+    urlInput.addEventListener('input', function () {
+      _gdocDocId = _extractDocId(this.value);
+      if (list && _gdocDocId) list.querySelectorAll('.gdoc-doc-item').forEach(function (i) { i.classList.remove('gdoc-doc-item--active'); });
+      _updateGdocBtn();
+    });
+  }
+  var btn = document.getElementById('gdocInsertBtn');
+  if (btn) btn.addEventListener('click', _insertLinks);
+}
+
+function _updateGdocBtn() {
+  var btn = document.getElementById('gdocInsertBtn');
+  if (btn) btn.disabled = !_gdocDocId || _gdocLinks.length === 0;
+}
+
+function _insertLinks() {
+  if (!_gdocDocId || !_gdocLinks.length) return;
+  var btn = document.getElementById('gdocInsertBtn');
+  var status = document.getElementById('gdocStatus');
+  var now = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  var text = '\n\nลิงก์สื่อ The Standard — ' + now + '\n\n';
+  _gdocLinks.forEach(function (lk, i) { text += (i + 1) + '. ' + lk.title + '\n' + lk.url + '\n\n'; });
+
+  btn.disabled = true;
+  btn.textContent = 'กำลังแทรก...';
+  if (status) status.textContent = '';
+
+  fetch('/api/gdocs/append', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId: _gdocDocId, text: text }),
+  }).then(function (r) { return r.json(); })
+  .then(function (data) {
+    if (data.ok) {
+      if (status) { status.textContent = 'แทรกลิงก์สำเร็จ!'; status.style.color = 'var(--success)'; }
+      showToast('แทรกลิงก์เข้าเอกสารสำเร็จ');
+    } else {
+      var msg = data.error === 'no_token' ? 'กรุณา Login ใหม่' : (data.error || 'เกิดข้อผิดพลาด');
+      if (status) { status.textContent = msg; status.style.color = 'var(--error)'; }
+      showToast(msg, 'error');
+    }
+  }).catch(function () {
+    if (status) { status.textContent = 'เชื่อมต่อไม่ได้'; status.style.color = 'var(--error)'; }
+    showToast('เชื่อมต่อไม่ได้', 'error');
+  }).finally(function () {
+    btn.disabled = false;
+    btn.textContent = 'แทรกลิงก์เข้าเอกสาร';
+  });
+}
+
+function _extractDocId(input) {
+  if (!input) return null;
+  var m = String(input).match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{20,100}$/.test(input.trim())) return input.trim();
+  return null;
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, type) {
+  var el = document.createElement('div');
+  el.className = 'toast' + (type === 'error' ? ' toast--error' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () { el.classList.add('toast--show'); });
+  });
+  setTimeout(function () {
+    el.classList.remove('toast--show');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
+  }, 3200);
 }

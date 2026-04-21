@@ -1,5 +1,19 @@
 [
   {
+    "version": "2.5.0",
+    "date": "2026-04-21",
+    "title": "Multi-select & Google Docs Integration",
+    "entries": [
+      { "type": "added", "text": "Multi-select mode — กดปุ่ม 'เลือก' เพื่อเลือกหลาย asset พร้อมกัน พร้อม visual indicator บนการ์ด" },
+      { "type": "added", "text": "Float bar — แสดงขึ้นมาเมื่อเลือก asset: ดาวน์โหลดทั้งหมด, Copy ลิงก์ทั้งหมด, เปิด Google Doc" },
+      { "type": "added", "text": "Google Docs panel — เชื่อมต่อกับ Google Docs ของบัญชีที่ล็อคอิน เลือก doc จากรายการล่าสุด แล้วแทรกลิงก์ไฟล์ได้ในคลิกเดียว" },
+      { "type": "added", "text": "Google Drive + Docs OAuth scope — เพิ่ม drive.metadata.readonly และ documents scope เพื่อแสดงเอกสารล่าสุดและ append ข้อความ" },
+      { "type": "added", "text": "API: GET /api/gdocs/recent — ดึงรายการ Google Docs ล่าสุดของ user" },
+      { "type": "added", "text": "API: POST /api/gdocs/append — แทรกลิงก์ไฟล์ท้าย Google Doc ที่เลือก ผ่าน Docs batchUpdate API" },
+      { "type": "added", "text": "Toast notification — แสดง feedback เมื่อ copy ลิงก์สำเร็จ หรือเกิดข้อผิดพลาด" }
+    ]
+  },
+  {
     "version": "2.4.0",
     "date": "2026-04-21",
     "title": "Vector Search — ค้นหาเชิงความหมายด้วย Qdrant",
