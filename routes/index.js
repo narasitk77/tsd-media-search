@@ -2,7 +2,8 @@
 
 const express    = require('express');
 const passport   = require('passport');
-const controller = require('../controllers/searchController');
+const controller  = require('../controllers/searchController');
+const mimirModel  = require('../models/mimirModel');
 const changelog  = require('../controllers/changelogController');
 const browse     = require('../controllers/browseController');
 const auth       = require('../controllers/authController');
@@ -101,6 +102,27 @@ router.get('/proxy/thumbnail/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).end();
   next();
 }, controller.thumbnailProxy);
+
+// ── Admin debug: raw Mimir response for one item ─────────────
+router.get('/admin/debug/asset/:id', admin.requireAdmin, async function (req, res) {
+  if (!SAFE_ID.test(req.params.id)) return res.status(400).json({ error: 'invalid id' });
+  try {
+    const raw = await mimirModel.getRawAsset(req.params.id);
+    // Return only URL-related and media fields to keep response readable
+    const keys = Object.keys(raw).filter(k =>
+      /url|proxy|hires|highres|thumb|preview|stream|hls|mp4|video|media|represent/i.test(k)
+    );
+    const subset = {};
+    keys.forEach(k => { subset[k] = raw[k]; });
+    // Also include all top-level string/number fields (except huge objects)
+    Object.keys(raw).forEach(k => {
+      if (typeof raw[k] === 'string' || typeof raw[k] === 'number') subset[k] = raw[k];
+    });
+    res.json({ id: req.params.id, urlFields: subset, allKeys: Object.keys(raw) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 router.get('/asset/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid ID' });

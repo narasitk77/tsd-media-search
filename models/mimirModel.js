@@ -461,6 +461,12 @@ async function getAssetById(id) {
   return normaliseItemFull(r.data);
 }
 
+// Raw Mimir response for a single item — used by admin debug route only
+async function getRawAsset(id) {
+  const r = await api.get(`/items/${id}`);
+  return r.data;
+}
+
 // ── Recent folders (last N days) ───────────────────────────────
 const SKIP_FOLDER_WORDS = /\b(hires?|hi[-_]?res|lowres?|logo|clip|thum(b|nail)?s?|proxy|web|raw|original|preview)\b/i;
 
@@ -582,4 +588,4 @@ async function browseFolderAssets(folderPath, { mediaType = 'all', page = 1, pag
   return result;
 }
 
-module.exports = { searchAssets, getAssetById, getThumbnailUrl, getStats, getRecentFolders, getFolderTree, browseFolderAssets };
+module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getStats, getRecentFolders, getFolderTree, browseFolderAssets };
