@@ -1,5 +1,26 @@
 [
   {
+    "version": "2.8.0",
+    "date": "2026-04-21",
+    "title": "Video Transcript with Time Index",
+    "entries": [
+      { "type": "added", "text": "Transcript panel ใน modal — วีดิโอที่มี subtitles (VTT) จะแสดง transcript พร้อม time index ด้านล่าง metadata" },
+      { "type": "added", "text": "คลิกที่ cue ใดก็ได้เพื่อ seek วีดิโอไปยังตำแหน่งนั้นทันที" },
+      { "type": "added", "text": "Highlight active cue — cue ที่กำลังเล่นอยู่จะถูก highlight และ scroll ให้เห็นอัตโนมัติ" },
+      { "type": "added", "text": "VTT proxy endpoint (/proxy/vtt/:id) — ดึง subtitle จาก Mimir server-side เพื่อหลีกเลี่ยงปัญหา CORS" },
+      { "type": "fixed", "text": "Modal scroll — เนื้อหา metadata และ transcript เลื่อนได้แล้วเมื่อมีเนื้อหายาว" }
+    ]
+  },
+  {
+    "version": "2.7.0",
+    "date": "2026-04-21",
+    "title": "HLS Video Playback + User Guide",
+    "entries": [
+      { "type": "added", "text": "เล่นวีดิโอ HLS (.m3u8) ได้โดยตรงใน browser ผ่าน HLS.js (Chrome/Firefox) และ native HLS (Safari)" },
+      { "type": "added", "text": "คู่มือการใช้งาน (?) — อธิบายวิธีค้นหา advanced, semantic search, multi-select, Google Docs" }
+    ]
+  },
+  {
     "version": "2.6.0",
     "date": "2026-04-21",
     "title": "Semantic Search — ค้นหาด้วยความหมาย AI บนหน้าหลัก",

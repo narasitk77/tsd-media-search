@@ -103,6 +103,11 @@ router.get('/proxy/thumbnail/:id', function (req, res, next) {
   next();
 }, controller.thumbnailProxy);
 
+router.get('/proxy/vtt/:id', function (req, res, next) {
+  if (!SAFE_ID.test(req.params.id)) return res.status(400).end();
+  next();
+}, controller.vttProxy);
+
 router.get('/asset/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid ID' });
   next();

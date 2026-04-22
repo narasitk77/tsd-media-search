@@ -1194,6 +1194,8 @@ a:hover { text-decoration: underline; }
 .modal-info {
   padding: 20px 24px 24px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0; /* required for flex child to shrink and scroll */
 }
 .modal-title {
   font-size: 1.1rem;
@@ -1241,6 +1243,47 @@ a:hover { text-decoration: underline; }
   background: #000;
   display: block;
 }
+
+/* ── Transcript ──────────────────────────────────────────────── */
+.modal-transcript {
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.modal-transcript-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 8px;
+}
+.transcript-cue {
+  display: flex;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition);
+  align-items: flex-start;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+.transcript-cue:hover { background: var(--bg); }
+.transcript-cue--active {
+  background: var(--blue-light);
+}
+.transcript-cue--active .transcript-time { color: var(--blue-dark); }
+.transcript-time {
+  flex-shrink: 0;
+  color: var(--blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  margin-top: 3px;
+}
+.transcript-text { color: var(--text); }
 
 /* Filter count badge */
 .filter-count { color: var(--text-muted); font-size: 0.85rem; }

@@ -322,6 +322,110 @@ function renderModal(asset) {
       });
     });
   });
+
+  // ── Transcript (VTT) ─────────────────────────────────────────
+  if (asset.mediaType === 'video' && asset.vttUrl) {
+    fetch('/proxy/vtt/' + encodeURIComponent(asset.id))
+      .then(function (r) { if (!r.ok) throw new Error('no vtt'); return r.text(); })
+      .then(function (vttText) {
+        var cues = _parseVtt(vttText);
+        if (!cues.length) return;
+
+        var listHtml = cues.map(function (c, i) {
+          return '<div class="transcript-cue" data-time="' + c.start + '" data-idx="' + i + '">' +
+            '<span class="transcript-time">' + _fmtVttTime(c.start) + '</span>' +
+            '<span class="transcript-text">' + escHtml(c.text) + '</span>' +
+            '</div>';
+        }).join('');
+
+        var section = document.createElement('div');
+        section.className = 'modal-transcript';
+        section.innerHTML = '<div class="modal-transcript-title">Transcript</div>' +
+          '<div id="transcriptList">' + listHtml + '</div>';
+
+        var info = document.querySelector('.modal-info');
+        if (info) info.appendChild(section);
+
+        // Click cue → seek
+        section.querySelectorAll('.transcript-cue').forEach(function (el) {
+          el.addEventListener('click', function () {
+            var vid = document.getElementById('mv');
+            if (vid) { vid.currentTime = parseFloat(el.dataset.time); vid.play().catch(function () {}); }
+          });
+        });
+
+        // Sync active cue on timeupdate
+        var vid = document.getElementById('mv');
+        if (vid) {
+          vid.addEventListener('timeupdate', function () {
+            var t = vid.currentTime;
+            var activeIdx = -1;
+            for (var ci = 0; ci < cues.length; ci++) {
+              if (t >= cues[ci].start && t <= cues[ci].end) { activeIdx = ci; break; }
+            }
+            section.querySelectorAll('.transcript-cue').forEach(function (el) {
+              var isActive = parseInt(el.dataset.idx, 10) === activeIdx;
+              if (isActive && !el.classList.contains('transcript-cue--active')) {
+                el.classList.add('transcript-cue--active');
+                var infoEl = el.closest('.modal-info');
+                if (infoEl) {
+                  var elTop    = el.offsetTop - infoEl.offsetTop;
+                  var elBottom = elTop + el.offsetHeight;
+                  var vTop     = infoEl.scrollTop;
+                  var vBottom  = vTop + infoEl.clientHeight;
+                  if (elBottom > vBottom || elTop < vTop) {
+                    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                  }
+                }
+              } else if (!isActive) {
+                el.classList.remove('transcript-cue--active');
+              }
+            });
+          });
+        }
+      })
+      .catch(function () {}); // no VTT available — fail silently
+  }
+}
+
+function _parseVtt(text) {
+  var cues  = [];
+  var lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  var i = 0;
+  while (i < lines.length) {
+    var line = lines[i];
+    if (/(\d+:)?\d\d:\d\d[.,]\d+ --> (\d+:)?\d\d:\d\d[.,]\d+/.test(line)) {
+      var parts = line.split(' --> ');
+      var start = _parseVttTs(parts[0].trim());
+      var end   = _parseVttTs(parts[1] ? parts[1].trim().split(' ')[0] : parts[0].trim());
+      var textLines = [];
+      i++;
+      while (i < lines.length && lines[i].trim() !== '') {
+        textLines.push(lines[i]);
+        i++;
+      }
+      var cueText = textLines.join(' ').replace(/<[^>]+>/g, '').trim();
+      if (cueText) cues.push({ start: start, end: end, text: cueText });
+    } else {
+      i++;
+    }
+  }
+  return cues;
+}
+
+function _parseVttTs(s) {
+  var p = s.replace(',', '.').split(':');
+  if (p.length === 3) return parseFloat(p[0]) * 3600 + parseFloat(p[1]) * 60 + parseFloat(p[2]);
+  return parseFloat(p[0]) * 60 + parseFloat(p[1]);
+}
+
+function _fmtVttTime(sec) {
+  var s   = Math.floor(sec);
+  var h   = Math.floor(s / 3600);
+  var m   = Math.floor((s % 3600) / 60);
+  var ss  = s % 60;
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  return h > 0 ? h + ':' + pad(m) + ':' + pad(ss) : m + ':' + pad(ss);
 }
 
 function closeModal() {

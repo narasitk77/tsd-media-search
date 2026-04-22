@@ -467,6 +467,15 @@ async function getRawAsset(id) {
   return r.data;
 }
 
+// ── VTT proxy — fetch subtitle content server-side (avoids CORS) ──
+async function getVttContent(id) {
+  const r = await api.get(`/items/${id}`);
+  const vttUrl = r.data.vttUrl;
+  if (!vttUrl) throw new Error('No VTT');
+  const res = await _metaAxios.get(vttUrl, { responseType: 'text', timeout: 10_000 });
+  return res.data;
+}
+
 // ── Recent folders (last N days) ───────────────────────────────
 const SKIP_FOLDER_WORDS = /\b(hires?|hi[-_]?res|lowres?|logo|clip|thum(b|nail)?s?|proxy|web|raw|original|preview)\b/i;
 
@@ -588,4 +597,4 @@ async function browseFolderAssets(folderPath, { mediaType = 'all', page = 1, pag
   return result;
 }
 
-module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getStats, getRecentFolders, getFolderTree, browseFolderAssets };
+module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getVttContent, getStats, getRecentFolders, getFolderTree, browseFolderAssets };

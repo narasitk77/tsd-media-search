@@ -153,6 +153,18 @@ async function thumbnailProxy(req, res) {
   }
 }
 
+// ── VTT proxy (serves subtitle content server-side to avoid CORS) ─
+async function vttProxy(req, res) {
+  try {
+    const text = await mimirModel.getVttContent(req.params.id);
+    res.set('Content-Type', 'text/vtt; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.send(text);
+  } catch (_) {
+    res.status(404).end();
+  }
+}
+
 // ── Asset detail (JSON) ────────────────────────────────────────
 async function assetDetail(req, res) {
   try {
@@ -176,4 +188,4 @@ async function assetDetail(req, res) {
   }
 }
 
-module.exports = { index, search, thumbnailProxy, assetDetail };
+module.exports = { index, search, thumbnailProxy, vttProxy, assetDetail };
