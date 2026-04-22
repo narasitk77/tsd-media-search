@@ -156,6 +156,16 @@ async function thumbnailProxy(req, res) {
 // ── Asset detail (JSON) ────────────────────────────────────────
 async function assetDetail(req, res) {
   try {
+    // ?raw=1 (admin only) — returns the raw Mimir API response for debugging
+    if (req.query.raw === '1') {
+      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
+      if (!req.user || !adminEmails.includes(req.user.email)) {
+        return res.status(403).json({ success: false, message: 'admin only' });
+      }
+      const raw = await mimirModel.getRawAsset(req.params.id);
+      return res.json({ success: true, allKeys: Object.keys(raw), raw });
+    }
+
     const asset = await mimirModel.getAssetById(req.params.id);
     logModel.log(req.user && req.user.email, 'view', { assetId: req.params.id, title: asset.title, mediaType: asset.mediaType });
     res.json({ success: true, asset });
