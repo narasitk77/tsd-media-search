@@ -510,24 +510,26 @@ async function getRecentFolders(days) {
   } catch (_) { return []; }
 }
 
-// ── Folder tree (unlimited depth) ─────────────────────────────
-const FOLDER_TREE_CACHE_TTL = 5 * 60 * 1000;
-let folderTreeCache = null;
+// ── Folder tree + per-folder asset cache (one shared scan) ────
+//
+// Both the tree and folder contents are built in a single API sweep.
+// All subsequent browseFolderAssets / browseFolderItemUrls calls
+// are served from cache — zero extra API calls.
+//
+const FOLDER_TREE_CACHE_TTL = 10 * 60 * 1000; // 10 min
+let folderTreeCache    = null;
+let folderAssetsCache  = null; // Map<folderPath, item[]>
 let folderTreeCacheTime = 0;
+let _warmPromise       = null; // dedup concurrent warm requests
 
-async function getFolderTree() {
-  const now = Date.now();
-  if (folderTreeCache && now - folderTreeCacheTime < FOLDER_TREE_CACHE_TTL) {
-    return folderTreeCache;
-  }
-
-  // folderCounts[path] = number of files whose sourcePath starts with path/
+async function _buildFolderCaches() {
   const folderCounts = {};
-  let scanned = 0;
+  const assetsMap    = new Map(); // directFolderPath → normaliseItem[]
+  let scanned  = 0;
   const maxScan = 5000;
 
   while (scanned < maxScan) {
-    const r = await api.get('/search', { params: { itemsPerPage: 500, from: scanned } });
+    const r     = await api.get('/search', { params: { itemsPerPage: 500, from: scanned } });
     const batch = (r.data._embedded && r.data._embedded.collection) || [];
     if (!batch.length) break;
 
@@ -535,14 +537,19 @@ async function getFolderTree() {
       const mtype = (raw.itemType || '').toLowerCase();
       if (!MEDIA_TYPES.has(mtype)) continue;
       const sourcePath = raw.ingestSourceFullPath || '';
-      const parts = sourcePath.split('/').filter(Boolean);
-      if (parts.length < 2) continue; // need at least folder/filename
+      const parts      = sourcePath.split('/').filter(Boolean);
+      if (parts.length < 2) continue;
 
-      // Every ancestor folder gets a count increment
+      // Count every ancestor folder
       for (let d = 1; d < parts.length; d++) {
-        const folderPath = parts.slice(0, d).join('/');
-        folderCounts[folderPath] = (folderCounts[folderPath] || 0) + 1;
+        const fp = parts.slice(0, d).join('/');
+        folderCounts[fp] = (folderCounts[fp] || 0) + 1;
       }
+
+      // Store item in its direct parent folder
+      const directFolder = parts.slice(0, -1).join('/');
+      if (!assetsMap.has(directFolder)) assetsMap.set(directFolder, []);
+      assetsMap.get(directFolder).push(normaliseItem(raw));
     }
 
     scanned += batch.length;
@@ -550,17 +557,13 @@ async function getFolderTree() {
     if (scanned >= apiTotal) break;
   }
 
-  // Build nested tree from flat path map
+  // Build nested tree
   const nodeMap = {};
   const roots   = [];
-
-  // Sort paths so parents are always created before children
-  const sortedPaths = Object.keys(folderCounts).sort();
-  for (const p of sortedPaths) {
-    const segs   = p.split('/');
-    const name   = segs[segs.length - 1];
-    const node   = { name, path: p, count: folderCounts[p], children: [] };
-    nodeMap[p]   = node;
+  for (const p of Object.keys(folderCounts).sort()) {
+    const segs = p.split('/');
+    const node = { name: segs[segs.length - 1], path: p, count: folderCounts[p], children: [] };
+    nodeMap[p] = node;
     if (segs.length === 1) {
       roots.push(node);
     } else {
@@ -568,7 +571,6 @@ async function getFolderTree() {
       (nodeMap[parent] ? nodeMap[parent].children : roots).push(node);
     }
   }
-
   function sortNodes(nodes) {
     nodes.sort((a, b) => a.name.localeCompare(b.name, 'th'));
     nodes.forEach(n => sortNodes(n.children));
@@ -576,67 +578,82 @@ async function getFolderTree() {
   sortNodes(roots);
 
   folderTreeCache     = roots;
-  folderTreeCacheTime = now;
-  return roots;
+  folderAssetsCache   = assetsMap;
+  folderTreeCacheTime = Date.now();
 }
 
-// ── Browse folder assets ───────────────────────────────────────
+async function _ensureFolderCaches() {
+  const now = Date.now();
+  if (folderTreeCache && now - folderTreeCacheTime < FOLDER_TREE_CACHE_TTL) return;
+  if (!_warmPromise) {
+    _warmPromise = _buildFolderCaches().finally(() => { _warmPromise = null; });
+  }
+  await _warmPromise;
+}
+
+async function getFolderTree() {
+  await _ensureFolderCaches();
+  return folderTreeCache;
+}
+
+// ── Browse folder assets (served from cache — instant) ────────
 async function browseFolderAssets(folderPath, { mediaType = 'all', page = 1, pageSize = 48 } = {}) {
-  // ใช้ keyword search แบบว่างแล้วกรองด้วย sourcePath prefix
-  const opts = {
-    searchString:    '',
-    mediaType, page, pageSize,
-    locationFilter:  folderPath,
-    sortBy:          'date',
-    sortOrder:       'desc',
-  };
-  // override locationFilter ให้ match prefix แน่นอน
-  const result = await searchByKeyword({
-    searchString: '', mediaType, page, pageSize,
-    dateFrom: null, dateTo: null, durationMin: null, durationMax: null,
-    locationFilter: folderPath,
-    sortBy: 'date', sortOrder: 'desc',
-  });
-  // กรอง prefix เพิ่มเติมให้แน่น
+  await _ensureFolderCaches();
+
+  // Collect items from this folder and all subfolders
   const fp = folderPath.toLowerCase();
-  result.items = result.items.filter(i =>
-    (i.sourcePath || '').toLowerCase().startsWith(fp + '/') ||
-    (i.sourcePath || '').toLowerCase() === fp
-  );
-  return result;
-}
-
-// ── Collect all download URLs in a folder (for ZIP endpoint) ───
-async function browseFolderItemUrls(folderPath) {
-  const fp      = folderPath.toLowerCase();
-  const results = [];
-  let from      = 0;
-
-  while (true) {
-    const r = await api.get('/search', { params: { itemsPerPage: 500, from } });
-    const batch = (r.data._embedded && r.data._embedded.collection) || [];
-    if (!batch.length) break;
-
-    for (const raw of batch) {
-      const mtype = (raw.itemType || '').toLowerCase();
-      if (!MEDIA_TYPES.has(mtype)) continue;
-      const sp = (raw.ingestSourceFullPath || '').toLowerCase();
-      if (!sp.startsWith(fp + '/') && sp !== fp) continue;
-
-      const url = raw.highRes || raw.proxy;
-      if (!url) continue;
-
-      const nameParts = (raw.ingestSourceFullPath || raw.originalFileName || raw.name || raw.id).split('/');
-      const filename  = nameParts[nameParts.length - 1] || `${raw.id}`;
-      results.push({ id: raw.id, filename, url });
+  let items = [];
+  for (const [path, pathItems] of folderAssetsCache.entries()) {
+    if (path.toLowerCase() === fp || path.toLowerCase().startsWith(fp + '/')) {
+      items.push(...pathItems);
     }
-
-    from += batch.length;
-    const apiTotal = r.data.totalAcrossPages || r.data.total || 0;
-    if (from >= apiTotal) break;
   }
 
-  return results;
+  if (mediaType !== 'all') items = items.filter(i => i.mediaType === mediaType);
+
+  // Sort by date desc
+  items.sort((a, b) => {
+    const da = new Date(a.modified || a.created || 0).getTime();
+    const db = new Date(b.modified || b.created || 0).getTime();
+    return db - da;
+  });
+
+  const total = items.length;
+  const start = (page - 1) * pageSize;
+  return {
+    items:      items.slice(start, start + pageSize),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    apiTotal:   total,
+    fetched:    total,
+    exhausted:  true,
+    mode:       'browse',
+  };
 }
+
+// ── Collect all download URLs for a folder (ZIP — from cache) ─
+async function browseFolderItemUrls(folderPath) {
+  await _ensureFolderCaches();
+
+  const fp  = folderPath.toLowerCase();
+  const out = [];
+  for (const [path, items] of folderAssetsCache.entries()) {
+    if (path.toLowerCase() === fp || path.toLowerCase().startsWith(fp + '/')) {
+      for (const item of items) {
+        if (!item.downloadUrl) continue;
+        const nameParts = (item.sourcePath || item.id).split('/');
+        out.push({ id: item.id, filename: nameParts[nameParts.length - 1] || item.id, url: item.downloadUrl });
+      }
+    }
+  }
+  return out;
+}
+
+// Warm the cache in background 5 s after startup
+setTimeout(() => {
+  _ensureFolderCaches().catch(err => console.warn('[mimirModel] folder cache warm-up failed:', err.message));
+}, 5000);
 
 module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getVttContent, getStats, getRecentFolders, getFolderTree, browseFolderAssets, browseFolderItemUrls };

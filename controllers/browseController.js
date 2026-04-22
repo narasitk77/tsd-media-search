@@ -41,10 +41,9 @@ async function folderContents(req, res) {
     path: parts.slice(0, i + 1).join('/'),
   }));
 
-  const [tree, data] = await Promise.all([
-    mimirModel.getFolderTree(),
-    mimirModel.browseFolderAssets(folderPath, { mediaType, page, pageSize }),
-  ]);
+  // getFolderTree warms the shared cache; browseFolderAssets reads from it
+  const tree = await mimirModel.getFolderTree();
+  const data = await mimirModel.browseFolderAssets(folderPath, { mediaType, page, pageSize });
 
   // Sub-folders: find this node in the deep tree
   const subFolders = findNodeChildren(tree, folderPath);
