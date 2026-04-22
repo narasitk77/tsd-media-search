@@ -219,35 +219,54 @@ function openModal(assetId) {
 function renderModal(asset) {
   // ── Media area ──────────────────────────────────────────────
   if (asset.mediaType === 'video' && asset.previewUrl) {
+    var _proxyUrl = asset.previewUrl;
     modalMedia.innerHTML =
       '<video id="mv" controls autoplay muted playsinline style="width:100%;max-height:55vh;background:#000">' +
-        '<source id="mvSrc" src="' + escHtml(asset.previewUrl) + '" />' +
         (asset.vttUrl ? '<track kind="subtitles" src="' + escHtml(asset.vttUrl) + '" default />' : '') +
       '</video>' +
       '<div id="mvErr" style="display:none;padding:28px 20px;text-align:center;background:#111;color:#aaa">' +
-        '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" style="margin-bottom:10px;opacity:.5"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M10 8l6 4-6 4V8z" fill="currentColor"/><line x1="4" y1="4" x2="20" y2="20" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round"/></svg>' +
-        '<p style="margin:0 0 6px;font-size:.88rem;color:#ccc">ไม่สามารถเล่นวีดิโอในเบราว์เซอร์ได้</p>' +
-        '<p style="margin:0 0 16px;font-size:.75rem;opacity:.7">รูปแบบไฟล์ไม่รองรับการเล่นออนไลน์ (เช่น MXF, ProRes)</p>' +
-        '<a href="' + escHtml(asset.previewUrl) + '" target="_blank" rel="noopener" ' +
+        '<p style="margin:0 0 6px;font-size:.88rem;color:#ccc">ไม่สามารถเล่นวีดิโอได้</p>' +
+        '<p style="margin:0 0 16px;font-size:.75rem;opacity:.7">กรุณาดาวน์โหลดเพื่อเล่นบนเครื่อง</p>' +
+        '<a href="' + escHtml(_proxyUrl) + '" target="_blank" rel="noopener" ' +
           'style="display:inline-block;padding:7px 16px;background:#0066cc;color:#fff;border-radius:8px;font-size:.82rem;text-decoration:none">เปิดไฟล์โดยตรง</a>' +
       '</div>';
 
-    // Attach error handler after element is in DOM
-    var _mv    = document.getElementById('mv');
-    var _mvSrc = document.getElementById('mvSrc');
+    var _mv  = document.getElementById('mv');
     var _mvErr = document.getElementById('mvErr');
     function _showVideoErr() {
       if (_mv)    _mv.style.display    = 'none';
       if (_mvErr) _mvErr.style.display = 'block';
     }
-    if (_mv)    _mv.addEventListener('error',   _showVideoErr);
-    if (_mvSrc) _mvSrc.addEventListener('error', _showVideoErr);
-    // Fallback timeout: if video hasn't started loading after 8s, show error
+
     if (_mv) {
-      var _mvTimer = setTimeout(function () {
-        if (_mv && _mv.readyState === 0 && _mv.networkState !== 1) _showVideoErr();
-      }, 8000);
-      _mv.addEventListener('loadedmetadata', function () { clearTimeout(_mvTimer); });
+      // HLS stream (.m3u8) — use HLS.js for Chrome/Firefox, native for Safari
+      if (/\.m3u8($|\?)/i.test(_proxyUrl) || /manifest\.m3u8/i.test(_proxyUrl)) {
+        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+          var _hls = new Hls({ enableWorker: false });
+          _hls.loadSource(_proxyUrl);
+          _hls.attachMedia(_mv);
+          _hls.on(Hls.Events.MANIFEST_PARSED, function () {
+            _mv.play().catch(function () {});
+          });
+          _hls.on(Hls.Events.ERROR, function (e, data) {
+            if (data.fatal) _showVideoErr();
+          });
+        } else if (_mv.canPlayType('application/vnd.apple.mpegurl')) {
+          // Safari — native HLS support
+          _mv.src = _proxyUrl;
+          _mv.play().catch(function () {});
+        } else {
+          _showVideoErr();
+        }
+      } else {
+        // Direct MP4 / other format
+        _mv.src = _proxyUrl;
+        _mv.addEventListener('error', _showVideoErr);
+        var _mvTimer = setTimeout(function () {
+          if (_mv.readyState === 0 && _mv.networkState === 3) _showVideoErr();
+        }, 8000);
+        _mv.addEventListener('loadedmetadata', function () { clearTimeout(_mvTimer); });
+      }
     }
   } else if (asset.previewUrl) {
     modalMedia.innerHTML =
