@@ -543,19 +543,23 @@ async function _buildFolderCaches() {
   for (let i = 0; i < apiTotal; i += BATCH) offsets.push(i);
 
   function processRaw(raw) {
-    const mtype = (raw.itemType || '').toLowerCase();
-    if (!MEDIA_TYPES.has(mtype)) return;
+    const mtype      = (raw.itemType || '').toLowerCase();
     const sourcePath = raw.ingestSourceFullPath || '';
     const parts      = sourcePath.split('/').filter(Boolean);
     if (parts.length < 2) return;
 
+    // Count ALL item types for the folder tree (matches Mimir's own view)
     for (let d = 1; d < parts.length; d++) {
       const fp = parts.slice(0, d).join('/');
       folderCounts[fp] = (folderCounts[fp] || 0) + 1;
     }
-    const directFolder = parts.slice(0, -1).join('/');
-    if (!assetsMap.has(directFolder)) assetsMap.set(directFolder, []);
-    assetsMap.get(directFolder).push(normaliseItem(raw));
+
+    // Only store image/video in assetsMap (for browsing)
+    if (MEDIA_TYPES.has(mtype)) {
+      const directFolder = parts.slice(0, -1).join('/');
+      if (!assetsMap.has(directFolder)) assetsMap.set(directFolder, []);
+      assetsMap.get(directFolder).push(normaliseItem(raw));
+    }
   }
 
   for (let i = 0; i < offsets.length; i += PARALLEL) {
@@ -671,4 +675,11 @@ setTimeout(() => {
   _ensureFolderCaches().catch(err => console.warn('[mimirModel] folder cache warm-up failed:', err.message));
 }, 5000);
 
-module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getVttContent, getStats, getRecentFolders, getFolderTree, browseFolderAssets, browseFolderItemUrls };
+// Force-expire folder cache (used by admin cache-bust endpoint)
+function invalidateFolderCache() {
+  folderTreeCache     = null;
+  folderAssetsCache   = null;
+  folderTreeCacheTime = 0;
+}
+
+module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getVttContent, getStats, getRecentFolders, getFolderTree, browseFolderAssets, browseFolderItemUrls, invalidateFolderCache };

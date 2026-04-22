@@ -99,6 +99,13 @@ router.post('/admin/users/add',             admin.requireAdmin, admin.addUser);
 router.post('/admin/users/:email/update',   admin.requireAdmin, admin.updateUser);
 router.post('/admin/users/:email/remove',   admin.requireAdmin, admin.removeUser);
 
+// Force-refresh folder tree cache (admin only)
+router.post('/admin/cache/refresh-folders', admin.requireAdmin, function (req, res) {
+  mimirModel.invalidateFolderCache();
+  mimirModel.getFolderTree().catch(() => {});  // kick off rebuild in background
+  res.json({ ok: true, message: 'Folder cache invalidated — rebuilding in background' });
+});
+
 router.get('/proxy/thumbnail/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).end();
   next();
