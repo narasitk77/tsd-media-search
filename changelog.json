@@ -1,5 +1,19 @@
 [
   {
+    "version": "2.9.0",
+    "date": "2026-04-22",
+    "title": "Folder Browser — Tree View + Download ZIP",
+    "entries": [
+      { "type": "added", "text": "Folder browser redesign: sidebar tree ที่ expand/collapse ได้ทุกระดับ (ไม่จำกัดความลึก)" },
+      { "type": "added", "text": "แสดงโฟลเดอร์ย่อย + จำนวนไฟล์ครบทุก level (Archive, Global Focus, VIDEO2026hires > VIDEO2026 > 1.NEWS ฯลฯ)" },
+      { "type": "added", "text": "คลิกโฟลเดอร์เพื่อดูสื่อภายใน พร้อม breadcrumb, type filter, pagination" },
+      { "type": "added", "text": "ปุ่ม 'ดาวน์โหลดโฟลเดอร์' — สร้าง ZIP ของไฟล์ทั้งหมดในโฟลเดอร์ (ดึงจาก Wasabi โดยตรง, รองรับสูงสุด 300 ไฟล์)" },
+      { "type": "added", "text": "บันทึก log การดาวน์โหลดโฟลเดอร์ (ใครดาวน์โหลดโฟลเดอร์อะไร กี่ไฟล์)" },
+      { "type": "added", "text": "เมนู 'โฟลเดอร์' ใน sidebar ซ้าย — เข้าถึงได้ทุกหน้า" },
+      { "type": "improved", "text": "Asset cards บนหน้า browse รองรับ select mode, multi-select, และเปิด modal เหมือนหน้าค้นหา" }
+    ]
+  },
+  {
     "version": "2.8.0",
     "date": "2026-04-21",
     "title": "Video Transcript with Time Index",

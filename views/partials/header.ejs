@@ -28,12 +28,19 @@
       </a>
     </div>
     <nav class="side-links">
-      <a href="/" class="side-link <%= (typeof activeTab === 'undefined' || activeTab !== 'changelog' && activeTab !== 'admin') ? 'active' : '' %>">
+      <a href="/" class="side-link <%= (typeof activeTab === 'undefined' || activeTab === 'search') ? 'active' : '' %>">
         <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
           <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
           <path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
         <span>ค้นหาสื่อ</span>
+      </a>
+
+      <a href="/browse" class="side-link <%= (typeof activeTab !== 'undefined' && activeTab === 'browse') ? 'active' : '' %>">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+          <path d="M1.5 4.5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1v6a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        </svg>
+        <span>โฟลเดอร์</span>
       </a>
 
       <button class="side-link" id="clPanelBtn">

@@ -1,167 +1,282 @@
 <%- include('partials/header', { activeTab: 'browse' }) %>
+<script>document.querySelector('.main-content') && document.querySelector('.main-content').classList.add('main-content--browse');</script>
 
-<div class="browse-page">
+<%
+/* ── Recursive tree renderer ─────────────────────────────── */
+function renderTreeNodes(nodes, activePath) {
+  var html = '';
+  nodes.forEach(function(node) {
+    var isActive   = activePath === node.path;
+    var isAncestor = activePath && (activePath === node.path || activePath.startsWith(node.path + '/'));
+    var hasKids    = node.children && node.children.length > 0;
+    html += '<li class="ftree-node' + (isAncestor ? ' open' : '') + '">';
+    html += '<div class="ftree-row' + (isActive ? ' ftree-row--active' : '') + '">';
+    if (hasKids) {
+      html += '<button class="ftree-toggle" aria-label="ขยาย">' +
+        '<svg width="12" height="12" viewBox="0 0 12 12" fill="none">' +
+        '<path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '</svg></button>';
+    } else {
+      html += '<span class="ftree-indent"></span>';
+    }
+    html += '<a href="/browse/folder?path=' + encodeURIComponent(node.path) + '" class="ftree-link">';
+    html += '<svg width="14" height="14" viewBox="0 0 16 16" fill="none">' +
+      '<path d="M1.5 4.5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1v6a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' +
+      '</svg>';
+    html += '<span class="ftree-name">' + node.name + '</span>';
+    html += '<span class="ftree-count">' + node.count + '</span>';
+    html += '</a>';
+    html += '</div>';
+    if (hasKids) {
+      html += '<ul class="ftree-children">' + renderTreeNodes(node.children, activePath) + '</ul>';
+    }
+    html += '</li>';
+  });
+  return html;
+}
+%>
 
-  <% if (mode === 'list') { %>
-  <!-- ── Root folder list ──────────────────────────────────── -->
-  <div class="browse-header">
-    <h1 class="browse-title">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8"/>
-      </svg>
-      เลือกโฟลเดอร์
-    </h1>
-    <p class="browse-subtitle">เลือกโฟลเดอร์เพื่อดูสื่อภายใน</p>
-  </div>
+<div class="browse-layout">
 
-  <% if (tree.length === 0) { %>
-    <p class="browse-empty">ไม่พบข้อมูลโฟลเดอร์</p>
-  <% } else { %>
-  <div class="browse-folder-grid">
-    <% tree.forEach(function(folder) { %>
-      <a href="/browse/folder?path=<%= encodeURIComponent(folder.path) %>" class="browse-folder-card">
-        <div class="browse-folder-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div class="browse-folder-info">
-          <div class="browse-folder-name"><%= folder.name %></div>
-          <div class="browse-folder-meta">
-            <%= folder.count.toLocaleString() %> ไฟล์
-            <% if (folder.children.length > 0) { %>
-              · <%= folder.children.length %> โฟลเดอร์ย่อย
-            <% } %>
-          </div>
-        </div>
-        <svg class="browse-folder-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </a>
-    <% }); %>
-  </div>
-  <% } %>
-
-  <% } else { %>
-  <!-- ── Folder contents ───────────────────────────────────── -->
-
-  <!-- Breadcrumb -->
-  <nav class="browse-breadcrumb">
-    <a href="/browse" class="browse-bc-item">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-        <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8"/>
+  <!-- ── Folder Tree Sidebar ────────────────────────────────── -->
+  <aside class="ftree-sidebar">
+    <div class="ftree-header">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path d="M1.5 4.5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1v6a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
       </svg>
       โฟลเดอร์
-    </a>
-    <% breadcrumb.forEach(function(bc, i) { %>
-      <span class="browse-bc-sep">›</span>
-      <% if (i === breadcrumb.length - 1) { %>
-        <span class="browse-bc-item browse-bc-item--active"><%= bc.name %></span>
-      <% } else { %>
-        <a href="/browse/folder?path=<%= encodeURIComponent(bc.path) %>" class="browse-bc-item"><%= bc.name %></a>
-      <% } %>
-    <% }); %>
-  </nav>
+    </div>
+    <% if (tree.length === 0) { %>
+      <p class="ftree-empty">กำลังโหลด...</p>
+    <% } else { %>
+      <ul class="ftree-list" id="folderTree">
+        <%- renderTreeNodes(tree, folder) %>
+      </ul>
+    <% } %>
+  </aside>
 
-  <!-- Sub-folders -->
-  <% if (subFolders && subFolders.length > 0) { %>
-  <div class="browse-sub-section">
-    <div class="browse-sub-label">โฟลเดอร์ย่อย</div>
-    <div class="browse-sub-grid">
-      <% subFolders.forEach(function(sub) { %>
-        <a href="/browse/folder?path=<%= encodeURIComponent(sub.path) %>" class="browse-sub-card">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8"/>
-          </svg>
-          <span><%= sub.name %></span>
-          <span class="browse-sub-count"><%= sub.count %></span>
-        </a>
+  <!-- ── Content Panel ──────────────────────────────────────── -->
+  <div class="browse-content">
+
+    <% if (mode === 'list') { %>
+    <!-- Landing state: no folder selected -->
+    <div class="browse-landing">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:.25;margin-bottom:12px">
+        <path d="M6 14a4 4 0 014-4h8l4 4h16a4 4 0 014 4v16a4 4 0 01-4 4H10a4 4 0 01-4-4V14z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <p>เลือกโฟลเดอร์จากแถบซ้ายเพื่อดูสื่อภายใน</p>
+    </div>
+
+    <% } else { %>
+    <!-- ── Folder content view ─────────────────────────────── -->
+
+    <!-- Breadcrumb -->
+    <nav class="browse-breadcrumb">
+      <a href="/browse" class="browse-bc-item">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+          <path d="M1.5 4.5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1v6a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4.5z" stroke="currentColor" stroke-width="1.4"/>
+        </svg>
+        โฟลเดอร์
+      </a>
+      <% breadcrumb.forEach(function(bc, i) { %>
+        <span class="browse-bc-sep">›</span>
+        <% if (i === breadcrumb.length - 1) { %>
+          <span class="browse-bc-item browse-bc-item--active"><%= bc.name %></span>
+        <% } else { %>
+          <a href="/browse/folder?path=<%= encodeURIComponent(bc.path) %>" class="browse-bc-item"><%= bc.name %></a>
+        <% } %>
       <% }); %>
-    </div>
-  </div>
-  <% } %>
+    </nav>
 
-  <!-- Media type filter -->
-  <div class="browse-filter-row">
-    <span class="browse-total"><strong><%= total.toLocaleString() %></strong> รายการ</span>
-    <div class="browse-type-chips">
-      <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=all"
-         class="chip chip--sm <%= mediaType === 'all'   ? 'chip--active' : '' %>">ทั้งหมด</a>
-      <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=image"
-         class="chip chip--sm <%= mediaType === 'image' ? 'chip--active' : '' %>">รูปภาพ</a>
-      <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=video"
-         class="chip chip--sm <%= mediaType === 'video' ? 'chip--active' : '' %>">วีดิโอ</a>
+    <!-- Sub-folders (children of current folder) -->
+    <% if (subFolders && subFolders.length > 0) { %>
+    <div class="browse-sub-section">
+      <div class="browse-sub-label">โฟลเดอร์ย่อย</div>
+      <div class="browse-sub-grid">
+        <% subFolders.forEach(function(sub) { %>
+          <a href="/browse/folder?path=<%= encodeURIComponent(sub.path) %>" class="browse-sub-card">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M1.5 4.5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1v6a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            </svg>
+            <span><%= sub.name %></span>
+            <span class="browse-sub-count"><%= sub.count %></span>
+          </a>
+        <% }); %>
+      </div>
     </div>
-  </div>
+    <% } %>
 
-  <!-- Asset grid -->
-  <% if (results.length === 0) { %>
-    <p class="browse-empty">ไม่พบสื่อในโฟลเดอร์นี้</p>
-  <% } else { %>
-  <div class="media-grid" id="mediaGrid">
-    <% results.forEach(function(asset) { %>
-      <div class="media-card"
-           data-id="<%= asset.id %>"
-           data-type="<%= asset.mediaType %>"
-           tabindex="0" role="button"
-           aria-label="<%= asset.title %>">
-        <div class="card-thumb">
-          <img src="/proxy/thumbnail/<%= asset.id %>"
-               alt="<%= asset.title %>"
-               loading="lazy"
-               onerror="this.src='/images/placeholder.svg'"/>
-          <% if (asset.mediaType === 'video') { %>
-            <div class="card-play-badge">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                <circle cx="20" cy="20" r="19" fill="rgba(0,0,0,0.55)"/>
-                <path d="M16 13l14 7-14 7V13z" fill="#fff"/>
-              </svg>
-            </div>
-            <% if (asset.duration) { %>
-              <span class="card-duration"><%= formatDuration(asset.duration) %></span>
-            <% } %>
-          <% } %>
-          <div class="card-type-badge card-type-badge--<%= asset.mediaType %>">
-            <%= asset.mediaType === 'video' ? 'Video' : 'Image' %>
-          </div>
-        </div>
-        <div class="card-body">
-          <p class="card-title"><%= asset.title %></p>
-          <div class="card-meta-row">
-            <% if (asset.category) { %><span class="card-category"><%= asset.category %></span><% } %>
-            <% if (asset.modified || asset.created) { %>
-              <span class="card-date"><%= new Date(asset.modified || asset.created).toLocaleDateString('th-TH', {year:'numeric',month:'short',day:'numeric'}) %></span>
-            <% } %>
-          </div>
-          <% if (asset.photographer) { %>
-            <div class="card-photographer">
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-              <%= asset.photographer %>
-            </div>
-          <% } %>
+    <!-- Filter row + Download button -->
+    <div class="browse-filter-row">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="browse-total"><strong><%= total.toLocaleString() %></strong> รายการ</span>
+        <div class="browse-type-chips">
+          <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=all"
+             class="chip chip--sm <%= mediaType === 'all'   ? 'chip--active' : '' %>">ทั้งหมด</a>
+          <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=image"
+             class="chip chip--sm <%= mediaType === 'image' ? 'chip--active' : '' %>">รูปภาพ</a>
+          <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=video"
+             class="chip chip--sm <%= mediaType === 'video' ? 'chip--active' : '' %>">วีดิโอ</a>
         </div>
       </div>
-    <% }); %>
-  </div>
+      <% if (total > 0) { %>
+      <button class="btn btn--ghost btn--sm" id="zipDownloadBtn"
+              data-path="<%= encodeURIComponent(folder) %>"
+              data-total="<%= total %>"
+              title="ดาวน์โหลดไฟล์ทั้งหมดในโฟลเดอร์เป็น ZIP">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <path d="M8 2v9M5 8l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        ดาวน์โหลดโฟลเดอร์
+      </button>
+      <% } %>
+    </div>
 
-  <!-- Pagination -->
-  <% if (totalPages > 1) { %>
-  <div class="pagination">
-    <% if (page > 1) { %>
-      <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=<%= mediaType %>&page=<%= page - 1 %>" class="btn btn--ghost btn--sm">← ก่อนหน้า</a>
-    <% } %>
-    <span class="pagination-info">หน้า <%= page %> / <%= totalPages %></span>
-    <% if (page < totalPages) { %>
-      <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=<%= mediaType %>&page=<%= page + 1 %>" class="btn btn--ghost btn--sm">ถัดไป →</a>
-    <% } %>
-  </div>
-  <% } %>
-  <% } %>
+    <!-- Asset grid -->
+    <% if (results.length === 0) { %>
+      <p class="browse-empty">ไม่พบสื่อในโฟลเดอร์นี้</p>
+    <% } else { %>
+    <div class="media-grid" id="mediaGrid">
+      <% results.forEach(function(asset) { %>
+        <div class="media-card"
+             data-id="<%= asset.id %>"
+             data-type="<%= asset.mediaType %>"
+             tabindex="0" role="button"
+             aria-label="<%= asset.title %>">
+          <div class="card-thumb">
+            <div class="card-select-indicator" aria-hidden="true">
+              <div class="card-select-circle">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <img src="/proxy/thumbnail/<%= asset.id %>"
+                 alt="<%= asset.title %>"
+                 loading="lazy"
+                 onerror="this.src='/images/placeholder.svg'"/>
+            <% if (asset.mediaType === 'video') { %>
+              <div class="card-play-badge">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                  <circle cx="20" cy="20" r="19" fill="rgba(0,0,0,0.55)"/>
+                  <path d="M16 13l14 7-14 7V13z" fill="#fff"/>
+                </svg>
+              </div>
+              <% if (asset.duration) { %>
+                <span class="card-duration"><%= formatDuration(asset.duration) %></span>
+              <% } %>
+            <% } %>
+            <div class="card-type-badge card-type-badge--<%= asset.mediaType %>">
+              <%= asset.mediaType === 'video' ? 'Video' : 'Image' %>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="card-title"><%= asset.title %></p>
+            <div class="card-meta-row">
+              <% if (asset.category) { %><span class="card-category"><%= asset.category %></span><% } %>
+              <% if (asset.modified || asset.created) { %>
+                <span class="card-date"><%= new Date(asset.modified || asset.created).toLocaleDateString('th-TH', {year:'numeric',month:'short',day:'numeric'}) %></span>
+              <% } %>
+            </div>
+            <% if (asset.photographer) { %>
+              <div class="card-photographer">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <%= asset.photographer %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
 
-  <% } %>
+    <!-- Pagination -->
+    <% if (totalPages > 1) { %>
+    <div class="pagination">
+      <% if (page > 1) { %>
+        <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=<%= mediaType %>&page=<%= page - 1 %>" class="btn btn--ghost btn--sm">← ก่อนหน้า</a>
+      <% } %>
+      <span class="pagination-info">หน้า <%= page %> / <%= totalPages %></span>
+      <% if (page < totalPages) { %>
+        <a href="/browse/folder?path=<%= encodeURIComponent(folder) %>&type=<%= mediaType %>&page=<%= page + 1 %>" class="btn btn--ghost btn--sm">ถัดไป →</a>
+      <% } %>
+    </div>
+    <% } %>
+    <% } %> <!-- end results.length > 0 -->
+
+    <% } %> <!-- end mode === folder -->
+
+  </div><!-- .browse-content -->
+</div><!-- .browse-layout -->
+
+<!-- ZIP download progress toast -->
+<div id="zipToast" class="zip-toast" hidden>
+  <div class="zip-toast-inner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="zip-toast-spin">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" stroke-dasharray="40 25" stroke-linecap="round"/>
+    </svg>
+    <span id="zipToastMsg">กำลังสร้าง ZIP...</span>
+    <button class="zip-toast-cancel" id="zipToastCancel">✕</button>
+  </div>
 </div>
+
+<script>
+(function () {
+  // ── Tree expand/collapse ─────────────────────────────────────
+  document.querySelectorAll('.ftree-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      var li = btn.closest('.ftree-node');
+      if (li) li.classList.toggle('open');
+    });
+  });
+
+  // ── ZIP download ─────────────────────────────────────────────
+  var zipBtn    = document.getElementById('zipDownloadBtn');
+  var zipToast  = document.getElementById('zipToast');
+  var zipMsg    = document.getElementById('zipToastMsg');
+  var zipCancel = document.getElementById('zipToastCancel');
+  var _zipXhr   = null;
+
+  if (zipBtn) {
+    zipBtn.addEventListener('click', function () {
+      var path  = decodeURIComponent(zipBtn.dataset.path);
+      var total = parseInt(zipBtn.dataset.total, 10) || 0;
+      var limit = 300;
+      var warn  = total > limit ? ' (จำกัด ' + limit + ' ไฟล์แรก)' : '';
+
+      if (!confirm('ดาวน์โหลด ' + total + ' ไฟล์' + warn + ' จากโฟลเดอร์นี้เป็น ZIP?\n\nไฟล์ขนาดใหญ่อาจใช้เวลาสักครู่')) return;
+
+      zipToast.hidden = false;
+      zipMsg.textContent = 'กำลังรวบรวมไฟล์' + (total > limit ? ' (300 ไฟล์แรก)' : '') + '...';
+      zipBtn.disabled = true;
+
+      // Use a hidden <a> trick to trigger streaming download
+      var a = document.createElement('a');
+      a.href = '/api/folder-zip?path=' + encodeURIComponent(path);
+      a.download = '';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Show toast for a few seconds then hide
+      setTimeout(function () {
+        zipToast.hidden = true;
+        zipBtn.disabled = false;
+      }, 4000);
+    });
+  }
+
+  if (zipCancel) {
+    zipCancel.addEventListener('click', function () {
+      zipToast.hidden = true;
+      if (zipBtn) zipBtn.disabled = false;
+    });
+  }
+})();
+</script>
 
 <%- include('partials/footer') %>

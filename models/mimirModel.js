@@ -84,7 +84,7 @@ function normaliseItem(raw) {
     ? parts[1].trim()
     : null;
 
-  return { id, mediaType, title, thumbnail: `/proxy/thumbnail/${id}`, modified, created, duration, fileSize: raw.mediaSize || null, category, mimeType, sourcePath, rootFolder, photographer };
+  return { id, mediaType, title, thumbnail: `/proxy/thumbnail/${id}`, modified, created, duration, fileSize: raw.mediaSize || null, category, mimeType, sourcePath, rootFolder, photographer, downloadUrl: raw.highRes || raw.proxy || null };
 }
 
 function normaliseItemFull(raw) {
@@ -510,7 +510,7 @@ async function getRecentFolders(days) {
   } catch (_) { return []; }
 }
 
-// ── Folder tree ────────────────────────────────────────────────
+// ── Folder tree (unlimited depth) ─────────────────────────────
 const FOLDER_TREE_CACHE_TTL = 5 * 60 * 1000;
 let folderTreeCache = null;
 let folderTreeCacheTime = 0;
@@ -521,9 +521,10 @@ async function getFolderTree() {
     return folderTreeCache;
   }
 
-  const rootMap = {};
+  // folderCounts[path] = number of files whose sourcePath starts with path/
+  const folderCounts = {};
   let scanned = 0;
-  const maxScan = 3000;
+  const maxScan = 5000;
 
   while (scanned < maxScan) {
     const r = await api.get('/search', { params: { itemsPerPage: 500, from: scanned } });
@@ -535,20 +536,12 @@ async function getFolderTree() {
       if (!MEDIA_TYPES.has(mtype)) continue;
       const sourcePath = raw.ingestSourceFullPath || '';
       const parts = sourcePath.split('/').filter(Boolean);
-      if (parts.length < 2) continue; // ต้องมีอย่างน้อย root/filename
+      if (parts.length < 2) continue; // need at least folder/filename
 
-      const root = parts[0];
-      if (!rootMap[root]) rootMap[root] = { name: root, path: root, count: 0, subMap: {} };
-      rootMap[root].count++;
-
-      if (parts.length >= 3) {
-        // มี sub-folder: root/sub/...
-        const sub = parts[1];
-        const subPath = root + '/' + sub;
-        if (!rootMap[root].subMap[sub]) {
-          rootMap[root].subMap[sub] = { name: sub, path: subPath, count: 0 };
-        }
-        rootMap[root].subMap[sub].count++;
+      // Every ancestor folder gets a count increment
+      for (let d = 1; d < parts.length; d++) {
+        const folderPath = parts.slice(0, d).join('/');
+        folderCounts[folderPath] = (folderCounts[folderPath] || 0) + 1;
       }
     }
 
@@ -557,18 +550,34 @@ async function getFolderTree() {
     if (scanned >= apiTotal) break;
   }
 
-  const tree = Object.values(rootMap)
-    .sort((a, b) => a.name.localeCompare(b.name, 'th'))
-    .map(f => ({
-      name:     f.name,
-      path:     f.path,
-      count:    f.count,
-      children: Object.values(f.subMap).sort((a, b) => a.name.localeCompare(b.name, 'th')),
-    }));
+  // Build nested tree from flat path map
+  const nodeMap = {};
+  const roots   = [];
 
-  folderTreeCache     = tree;
+  // Sort paths so parents are always created before children
+  const sortedPaths = Object.keys(folderCounts).sort();
+  for (const p of sortedPaths) {
+    const segs   = p.split('/');
+    const name   = segs[segs.length - 1];
+    const node   = { name, path: p, count: folderCounts[p], children: [] };
+    nodeMap[p]   = node;
+    if (segs.length === 1) {
+      roots.push(node);
+    } else {
+      const parent = segs.slice(0, -1).join('/');
+      (nodeMap[parent] ? nodeMap[parent].children : roots).push(node);
+    }
+  }
+
+  function sortNodes(nodes) {
+    nodes.sort((a, b) => a.name.localeCompare(b.name, 'th'));
+    nodes.forEach(n => sortNodes(n.children));
+  }
+  sortNodes(roots);
+
+  folderTreeCache     = roots;
   folderTreeCacheTime = now;
-  return tree;
+  return roots;
 }
 
 // ── Browse folder assets ───────────────────────────────────────
@@ -597,4 +606,37 @@ async function browseFolderAssets(folderPath, { mediaType = 'all', page = 1, pag
   return result;
 }
 
-module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getVttContent, getStats, getRecentFolders, getFolderTree, browseFolderAssets };
+// ── Collect all download URLs in a folder (for ZIP endpoint) ───
+async function browseFolderItemUrls(folderPath) {
+  const fp      = folderPath.toLowerCase();
+  const results = [];
+  let from      = 0;
+
+  while (true) {
+    const r = await api.get('/search', { params: { itemsPerPage: 500, from } });
+    const batch = (r.data._embedded && r.data._embedded.collection) || [];
+    if (!batch.length) break;
+
+    for (const raw of batch) {
+      const mtype = (raw.itemType || '').toLowerCase();
+      if (!MEDIA_TYPES.has(mtype)) continue;
+      const sp = (raw.ingestSourceFullPath || '').toLowerCase();
+      if (!sp.startsWith(fp + '/') && sp !== fp) continue;
+
+      const url = raw.highRes || raw.proxy;
+      if (!url) continue;
+
+      const nameParts = (raw.ingestSourceFullPath || raw.originalFileName || raw.name || raw.id).split('/');
+      const filename  = nameParts[nameParts.length - 1] || `${raw.id}`;
+      results.push({ id: raw.id, filename, url });
+    }
+
+    from += batch.length;
+    const apiTotal = r.data.totalAcrossPages || r.data.total || 0;
+    if (from >= apiTotal) break;
+  }
+
+  return results;
+}
+
+module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getVttContent, getStats, getRecentFolders, getFolderTree, browseFolderAssets, browseFolderItemUrls };

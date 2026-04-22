@@ -90,6 +90,7 @@ router.get('/changelog',     changelog.index);
 router.get('/api/changelog', changelog.api);
 router.get('/browse',          browse.folderList);
 router.get('/browse/folder',   browse.folderContents);
+router.get('/api/folder-zip',  browse.folderZip);
 
 router.get('/admin',    admin.requireAdmin, admin.dashboard);
 
