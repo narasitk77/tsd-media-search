@@ -3,7 +3,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev --no-audit --no-fund
 
 # ── Stage 2: production image ─────────────────────────────────
 FROM node:20-alpine AS runner
