@@ -525,36 +525,51 @@ let _warmPromise       = null; // dedup concurrent warm requests
 async function _buildFolderCaches() {
   const folderCounts = {};
   const assetsMap    = new Map(); // directFolderPath → normaliseItem[]
-  let scanned  = 0;
-  const maxScan = 5000;
+  const BATCH        = 500;
+  const PARALLEL     = 5; // concurrent requests per round
 
-  while (scanned < maxScan) {
-    const r     = await api.get('/search', { params: { itemsPerPage: 500, from: scanned } });
-    const batch = (r.data._embedded && r.data._embedded.collection) || [];
-    if (!batch.length) break;
+  // ── Step 1: get true total ─────────────────────────────────
+  const r0       = await api.get('/search', { params: { itemsPerPage: 1, from: 0 } });
+  const apiTotal = r0.data.totalAcrossPages || r0.data.total || 0;
+  if (!apiTotal) {
+    folderTreeCache     = [];
+    folderAssetsCache   = new Map();
+    folderTreeCacheTime = Date.now();
+    return;
+  }
 
-    for (const raw of batch) {
-      const mtype = (raw.itemType || '').toLowerCase();
-      if (!MEDIA_TYPES.has(mtype)) continue;
-      const sourcePath = raw.ingestSourceFullPath || '';
-      const parts      = sourcePath.split('/').filter(Boolean);
-      if (parts.length < 2) continue;
+  // ── Step 2: build offset list and fetch in parallel rounds ─
+  const offsets = [];
+  for (let i = 0; i < apiTotal; i += BATCH) offsets.push(i);
 
-      // Count every ancestor folder
-      for (let d = 1; d < parts.length; d++) {
-        const fp = parts.slice(0, d).join('/');
-        folderCounts[fp] = (folderCounts[fp] || 0) + 1;
-      }
+  function processRaw(raw) {
+    const mtype = (raw.itemType || '').toLowerCase();
+    if (!MEDIA_TYPES.has(mtype)) return;
+    const sourcePath = raw.ingestSourceFullPath || '';
+    const parts      = sourcePath.split('/').filter(Boolean);
+    if (parts.length < 2) return;
 
-      // Store item in its direct parent folder
-      const directFolder = parts.slice(0, -1).join('/');
-      if (!assetsMap.has(directFolder)) assetsMap.set(directFolder, []);
-      assetsMap.get(directFolder).push(normaliseItem(raw));
+    for (let d = 1; d < parts.length; d++) {
+      const fp = parts.slice(0, d).join('/');
+      folderCounts[fp] = (folderCounts[fp] || 0) + 1;
     }
+    const directFolder = parts.slice(0, -1).join('/');
+    if (!assetsMap.has(directFolder)) assetsMap.set(directFolder, []);
+    assetsMap.get(directFolder).push(normaliseItem(raw));
+  }
 
-    scanned += batch.length;
-    const apiTotal = r.data.totalAcrossPages || r.data.total || 0;
-    if (scanned >= apiTotal) break;
+  for (let i = 0; i < offsets.length; i += PARALLEL) {
+    const chunk = offsets.slice(i, i + PARALLEL);
+    const responses = await Promise.all(
+      chunk.map(from =>
+        api.get('/search', { params: { itemsPerPage: BATCH, from } }).catch(() => null)
+      )
+    );
+    for (const r of responses) {
+      if (!r) continue;
+      const batch = (r.data._embedded && r.data._embedded.collection) || [];
+      batch.forEach(processRaw);
+    }
   }
 
   // Build nested tree
