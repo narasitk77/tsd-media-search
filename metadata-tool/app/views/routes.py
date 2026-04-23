@@ -1084,68 +1084,162 @@ async def batch_stream():
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-# ── API: Google Sheets auth ───────────────────────────────────────────────────
-
-@router.get("/api/sheets/status")
-async def sheets_status():
-    from app.services.sheets_service import is_connected
-    return {
-        "connected":       is_connected(),
-        "has_credentials": bool(settings.GOOGLE_OAUTH_CLIENT_ID and settings.GOOGLE_OAUTH_CLIENT_SECRET),
-        "sheet_id":        settings.GOOGLE_SHEET_ID,
-        "redirect_uri":    settings.GOOGLE_REDIRECT_URI,
-    }
 
 
-@router.get("/api/sheets/auth")
-async def sheets_auth():
-    """Redirect browser to Google OAuth2 login page."""
-    from fastapi.responses import RedirectResponse
-    if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
-        raise HTTPException(status_code=400,
-            detail="ยังไม่ได้ตั้ง GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET ใน .env")
-    from app.services.sheets_service import get_auth_url
-    return RedirectResponse(get_auth_url())
+# ── API: CSV export ───────────────────────────────────────────────────────────
+
+@router.get("/api/report/export.csv")
+async def export_report_csv(db: Session = Depends(get_db)):
+    """Export full report as CSV — Summary + by_folder + by_day in one file."""
+    import csv, io
+    from fastapi.responses import StreamingResponse as _SR
+    from sqlalchemy import func, case as _case
+
+    price_in, price_out = _get_pricing()
+    provider = settings.AI_PROVIDER.lower()
+    model = settings.ANTHROPIC_MODEL if provider == "claude" else settings.GEMINI_MODEL
+
+    row = db.query(
+        func.count(Asset.item_id).label("total"),
+        func.sum(_case((Asset.status == "done",    1), else_=0)).label("done"),
+        func.sum(_case((Asset.status == "pending", 1), else_=0)).label("pending"),
+        func.sum(_case((Asset.status == "error",   1), else_=0)).label("error"),
+        func.sum(Asset.tokens_input).label("tokens_in"),
+        func.sum(Asset.tokens_output).label("tokens_out"),
+        func.min(Asset.processed_at).label("first_at"),
+        func.max(Asset.processed_at).label("last_at"),
+    ).first()
+
+    rows = db.query(Asset.ingest_path, Asset.status,
+                    Asset.tokens_input, Asset.tokens_output, Asset.processed_at).all()
+
+    albums: dict = {}
+    day_map: dict = {}
+    for path, status, ti, to, proc_at in rows:
+        key = extract_event_from_path(path or "") or "—"
+        if key not in albums:
+            albums[key] = {"folder": key, "total": 0, "done": 0, "error": 0,
+                           "tokens_in": 0.0, "tokens_out": 0.0}
+        albums[key]["total"] += 1
+        if status == "done":
+            albums[key]["done"] += 1
+            albums[key]["tokens_in"]  += ti or 0
+            albums[key]["tokens_out"] += to or 0
+        elif status == "error":
+            albums[key]["error"] += 1
+        if proc_at and status == "done":
+            day = proc_at.strftime("%Y-%m-%d")
+            if day not in day_map:
+                day_map[day] = {"date": day, "done": 0, "tokens": 0, "cost_usd": 0.0}
+            day_map[day]["done"] += 1
+            day_map[day]["tokens"] += int((ti or 0) + (to or 0))
+            day_map[day]["cost_usd"] += ((ti or 0) / 1e6) * price_in + ((to or 0) / 1e6) * price_out
+
+    total_in  = row.tokens_in  or 0
+    total_out = row.tokens_out or 0
+    cost_usd  = (total_in / 1e6) * price_in + (total_out / 1e6) * price_out
+    elapsed_min = ""
+    if row.first_at and row.last_at:
+        elapsed_min = round((row.last_at - row.first_at).total_seconds() / 60, 1)
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+
+    # ── Section 1: Summary ──
+    w.writerow(["=== SUMMARY ==="])
+    w.writerow(["Generated At", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")])
+    w.writerow(["Provider", provider.upper()])
+    w.writerow(["Model", model])
+    w.writerow(["Total Assets", row.total or 0])
+    w.writerow(["Done", row.done or 0])
+    w.writerow(["Pending", row.pending or 0])
+    w.writerow(["Error", row.error or 0])
+    w.writerow(["Folders", len(albums)])
+    w.writerow(["Tokens In", int(total_in)])
+    w.writerow(["Tokens Out", int(total_out)])
+    w.writerow(["Tokens Total", int(total_in + total_out)])
+    w.writerow(["Cost USD", round(cost_usd, 5)])
+    w.writerow(["Cost THB", round(cost_usd * 34, 4)])
+    w.writerow(["First Processed", row.first_at.strftime("%Y-%m-%d %H:%M:%S") if row.first_at else ""])
+    w.writerow(["Last Processed",  row.last_at.strftime("%Y-%m-%d %H:%M:%S")  if row.last_at  else ""])
+    w.writerow(["Elapsed (min)", elapsed_min])
+    w.writerow([])
+
+    # ── Section 2: By Folder ──
+    w.writerow(["=== BY FOLDER ==="])
+    w.writerow(["Album / Folder", "Total", "Done", "Error", "Tokens Total", "Cost USD", "Cost THB"])
+    for a in sorted(albums.values(), key=lambda x: x["folder"]):
+        c = (a["tokens_in"] / 1e6) * price_in + (a["tokens_out"] / 1e6) * price_out
+        w.writerow([a["folder"], a["total"], a["done"], a["error"],
+                    int(a["tokens_in"] + a["tokens_out"]), round(c, 5), round(c * 34, 3)])
+    w.writerow([])
+
+    # ── Section 3: By Day ──
+    w.writerow(["=== BY DAY ==="])
+    w.writerow(["Date", "Done", "Tokens", "Cost USD", "Cost THB"])
+    for d in sorted(day_map.values(), key=lambda x: x["date"], reverse=True):
+        w.writerow([d["date"], d["done"], d["tokens"],
+                    round(d["cost_usd"], 5), round(d["cost_usd"] * 34, 4)])
+
+    buf.seek(0)
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    return _SR(
+        iter([buf.getvalue().encode("utf-8-sig")]),  # utf-8-sig = BOM for Excel/Sheets
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=report_{ts}.csv"},
+    )
 
 
-@router.get("/api/sheets/callback")
-async def sheets_callback(code: str = "", error: str = ""):
-    """Google OAuth2 callback — exchange code for tokens then redirect to UI."""
-    from fastapi.responses import HTMLResponse
-    if error:
-        return HTMLResponse(f"""<html><body style="font-family:sans-serif;background:#111;color:#eee;padding:2rem">
-            <h3>❌ Authorization failed: {error}</h3>
-            <p><a href="javascript:window.close()" style="color:#aaa">ปิดหน้าต่างนี้</a></p>
-            </body></html>""")
-    from app.services.sheets_service import complete_auth
-    result = complete_auth(code)
-    if result["ok"]:
-        root = settings.APP_ROOT_PATH.rstrip("/")
-        return HTMLResponse(f"""<html><body style="font-family:sans-serif;background:#111;color:#eee;padding:2rem">
-            <h3>✅ เชื่อมต่อ Google Sheets สำเร็จ!</h3>
-            <p>ปิดหน้าต่างนี้แล้วกลับไปที่แอป</p>
-            <script>
-              if (window.opener) {{
-                window.opener.postMessage('sheets_connected', '*');
-                window.close();
-              }} else {{
-                setTimeout(() => window.location.href = '{root}/', 2000);
-              }}
-            </script>
-            </body></html>""")
-    return HTMLResponse(f"""<html><body style="font-family:sans-serif;background:#111;color:#eee;padding:2rem">
-        <h3>❌ เชื่อมต่อไม่สำเร็จ</h3>
-        <pre style="color:#f88">{result.get("error","")}</pre>
-        <p><a href="javascript:window.close()" style="color:#aaa">ปิดหน้าต่างนี้</a></p>
-        </body></html>""", status_code=400)
+@router.get("/api/reports/{filename}/export.csv")
+async def export_saved_report_csv(filename: str):
+    """Export a saved report JSON as CSV."""
+    import csv, io
+    from fastapi.responses import StreamingResponse as _SR
 
+    p = _REPORTS_DIR / filename
+    if not p.exists() or not p.name.startswith("report_") or not p.name.endswith(".json"):
+        raise HTTPException(status_code=404, detail="Report not found")
+    report = json.loads(p.read_text())
+    s = report.get("summary", {})
+    elapsed_min = round(s.get("elapsed_sec", 0) / 60, 1) if s.get("elapsed_sec") else ""
 
-@router.delete("/api/sheets/disconnect")
-async def sheets_disconnect():
-    from app.services.sheets_service import _TOKEN_FILE
-    if _TOKEN_FILE.exists():
-        _TOKEN_FILE.unlink()
-    return {"ok": True}
+    buf = io.StringIO()
+    w = csv.writer(buf)
+
+    w.writerow(["=== SUMMARY ==="])
+    w.writerow(["Generated At", report.get("generated_at", "")])
+    w.writerow(["Provider", report.get("provider", "")])
+    w.writerow(["Model", report.get("model", "")])
+    for k, v in [("Total Assets", "total_assets"), ("Done", "total_done"),
+                 ("Pending", "total_pending"), ("Error", "total_error"),
+                 ("Folders", "total_folders"), ("Tokens In", "tokens_in"),
+                 ("Tokens Out", "tokens_out"), ("Tokens Total", "tokens_total"),
+                 ("Cost USD", "cost_usd"), ("Cost THB", "cost_thb"),
+                 ("First Processed", "first_processed"), ("Last Processed", "last_processed")]:
+        w.writerow([k, s.get(v, "")])
+    w.writerow(["Elapsed (min)", elapsed_min])
+    w.writerow([])
+
+    w.writerow(["=== BY FOLDER ==="])
+    w.writerow(["Album / Folder", "Total", "Done", "Error", "Tokens Total", "Cost USD", "Cost THB"])
+    for f in report.get("by_folder", []):
+        w.writerow([f.get("folder",""), f.get("total",0), f.get("done",0), f.get("error",0),
+                    f.get("tokens_total",0), f.get("cost_usd",0), f.get("cost_thb",0)])
+    w.writerow([])
+
+    w.writerow(["=== BY DAY ==="])
+    w.writerow(["Date", "Done", "Tokens", "Cost USD", "Cost THB"])
+    for d in report.get("by_day", []):
+        w.writerow([d.get("date",""), d.get("done",0), d.get("tokens",0),
+                    d.get("cost_usd",0), d.get("cost_thb",0)])
+
+    buf.seek(0)
+    csv_name = filename.replace(".json", ".csv")
+    return _SR(
+        iter([buf.getvalue().encode("utf-8-sig")]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={csv_name}"},
+    )
 
 
 # ── API: Saved reports ─────────────────────────────────────────────────────────
@@ -1183,35 +1277,6 @@ async def get_saved_report(filename: str):
 
 
 
-@router.post("/api/reports/{filename}/push-sheets")
-async def push_report_to_sheets_endpoint(filename: str):
-    """Push a saved report to Google Sheets manually."""
-    if not settings.GOOGLE_SERVICE_ACCOUNT_JSON:
-        raise HTTPException(status_code=400, detail="GOOGLE_SERVICE_ACCOUNT_JSON not configured")
-    p = _REPORTS_DIR / filename
-    if not p.exists() or not p.name.startswith("report_") or not p.name.endswith(".json"):
-        raise HTTPException(status_code=404, detail="Report not found")
-    report = json.loads(p.read_text())
-    import asyncio as _asyncio
-    from app.services.sheets_service import push_report_to_sheets
-    result = await _asyncio.get_event_loop().run_in_executor(None, push_report_to_sheets, report)
-    if not result.get("ok"):
-        raise HTTPException(status_code=502, detail=result.get("error", "Sheets push failed"))
-    return result
-
-
-@router.post("/api/report/push-sheets")
-async def push_current_report_to_sheets(db: Session = Depends(get_db)):
-    """Push current live report to Google Sheets."""
-    from app.services.sheets_service import is_connected
-    if not is_connected():
-        raise HTTPException(status_code=400,
-            detail="ยังไม่ได้เชื่อมต่อ Google Sheets — ไปที่ /api/sheets/auth ก่อน")
-    fname = await _save_report_snapshot(db)
-    if not fname:
-        raise HTTPException(status_code=500, detail="Failed to generate report")
-    return {"ok": True, "filename": fname,
-            "url": f"https://docs.google.com/spreadsheets/d/{settings.GOOGLE_SHEET_ID}"}
 
 
 # ── API: Push to Mimir ─────────────────────────────────────────────────────────

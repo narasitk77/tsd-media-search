@@ -369,9 +369,6 @@
     <button class="btn btn-sm btn-outline-warning" id="btn-reconnect" onclick="reconnectMimir()" title="ต่อใหม่กับ Mimir" style="padding:.2rem .6rem;font-size:.8rem">
       <i class="bi bi-plug me-1"></i>ต่อใหม่
     </button>
-    <button class="btn btn-sm btn-outline-secondary" id="btn-sheets" onclick="openSheetsModal()" title="Google Sheets" style="padding:.2rem .6rem;font-size:.8rem">
-      <i class="bi bi-table me-1"></i><span id="sheets-status-label">Sheets</span>
-    </button>
     <button class="btn btn-sm btn-outline-secondary" onclick="toggleHelp()" title="คู่มือการใช้งาน" style="padding:.2rem .6rem;font-size:.8rem">
       <i class="bi bi-question-circle me-1"></i>คู่มือ
     </button>
@@ -1080,21 +1077,6 @@
   </div>
 </div>
 
-<!-- ══════════════ Google Sheets Modal ══════════════ -->
-<div class="modal fade" id="sheetsModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h6 class="modal-title mb-0"><i class="bi bi-table me-2"></i>Google Sheets Integration</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="sheets-modal-body">
-        <div class="text-center text-secondary py-4"><i class="bi bi-arrow-repeat me-2"></i>กำลังโหลด…</div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ══════════════ Report Modal ══════════════ -->
 <div class="modal fade" id="reportModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -1105,9 +1087,12 @@
           <div class="text-secondary" style="font-size:.72rem" id="report-generated-at"></div>
         </div>
         <div class="d-flex gap-2 align-items-center">
-          <button class="btn btn-outline-success btn-sm" onclick="pushCurrentToSheets(this)" title="ส่ง report ปัจจุบันไป Google Sheets">
-            <i class="bi bi-table me-1"></i>→ Sheets
-          </button>
+          <a href="https://docs.google.com/spreadsheets/d/1UelzdSNpwWfEkU7JThuhf0irTKPJk-1Pvhh1-eub6B0" target="_blank" class="btn btn-outline-success btn-sm" title="เปิด Google Sheet">
+            <i class="bi bi-table me-1"></i>Sheet
+          </a>
+          <a id="btn-export-csv" href="#" onclick="downloadReportCsv(event)" class="btn btn-outline-info btn-sm" title="Export CSV">
+            <i class="bi bi-download me-1"></i>CSV
+          </a>
           <button class="btn btn-outline-secondary btn-sm" onclick="openSavedReports()" title="ประวัติ Report ที่บันทึกไว้">
             <i class="bi bi-clock-history me-1"></i>ประวัติ
           </button>
@@ -1649,7 +1634,7 @@
           <td class="text-end" style="color:#e0b040">${(rpt.cost_thb||0).toFixed(2)}</td>
           <td class="text-end">
             <button class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="loadSavedReport('${rpt.filename}')">ดู</button>
-            <button class="btn btn-outline-success btn-sm py-0 px-2" onclick="pushSavedToSheets('${rpt.filename}', this)" title="ส่งไป Google Sheets"><i class="bi bi-table"></i></button>
+            <a class="btn btn-outline-info btn-sm py-0 px-2" href="${_ROOT}/api/reports/${rpt.filename}/export.csv" download title="Download CSV"><i class="bi bi-download"></i></a>
           </td>
         </tr>`;
       }
@@ -1676,162 +1661,9 @@
     }
   }
 
-  async function openSheetsModal() {
-    new bootstrap.Modal(document.getElementById('sheetsModal')).show();
-    await refreshSheetsModal();
-  }
-
-  async function refreshSheetsModal() {
-    const body = document.getElementById('sheets-modal-body');
-    try {
-      const r = await fetch(_ROOT+'/api/sheets/status');
-      const d = await r.json();
-      const lbl = document.getElementById('sheets-status-label');
-
-      if (d.connected) {
-        lbl.textContent = '✓ Sheets';
-        document.getElementById('btn-sheets').className = 'btn btn-sm btn-outline-success';
-        body.innerHTML = `
-          <div class="alert alert-success mb-3 py-2">
-            <i class="bi bi-check-circle me-2"></i>เชื่อมต่อ Google Sheets แล้ว
-          </div>
-          <p class="text-secondary" style="font-size:.85rem">
-            Report จะถูกส่งไปยัง Spreadsheet อัตโนมัติเมื่อ batch เสร็จ และเมื่อกด Clear DB
-          </p>
-          <a href="https://docs.google.com/spreadsheets/d/${d.sheet_id}" target="_blank" class="btn btn-outline-success btn-sm me-2">
-            <i class="bi bi-box-arrow-up-right me-1"></i>เปิด Spreadsheet
-          </a>
-          <button class="btn btn-outline-danger btn-sm" onclick="disconnectSheets()">
-            <i class="bi bi-plug me-1"></i>ยกเลิกการเชื่อมต่อ
-          </button>`;
-      } else if (!d.has_credentials) {
-        lbl.textContent = 'Sheets';
-        document.getElementById('btn-sheets').className = 'btn btn-sm btn-outline-secondary';
-        body.innerHTML = `
-          <p style="font-size:.88rem;line-height:1.8">ต้องการ <strong>Google OAuth2 Client ID</strong> และ <strong>Client Secret</strong> ก่อน:</p>
-          <ol style="font-size:.84rem;line-height:2;color:#bbb">
-            <li>ไปที่ <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console → APIs → Credentials</a></li>
-            <li>Enable <strong>Google Sheets API</strong></li>
-            <li>กด <strong>Create Credentials → OAuth client ID</strong></li>
-            <li>เลือก Application type: <strong>Web application</strong></li>
-            <li>เพิ่ม Authorized redirect URI: <code>${d.redirect_uri}</code></li>
-            <li>Copy <code>client_id</code> และ <code>client_secret</code> ใส่ใน <code>.env</code>:<br>
-              <code>GOOGLE_OAUTH_CLIENT_ID=…<br>GOOGLE_OAUTH_CLIENT_SECRET=…</code>
-            </li>
-            <li>Restart container แล้วกลับมากดปุ่ม <strong>Sheets</strong> อีกครั้ง</li>
-          </ol>`;
-      } else {
-        lbl.textContent = 'Sheets';
-        document.getElementById('btn-sheets').className = 'btn btn-sm btn-outline-warning';
-        body.innerHTML = `
-          <p style="font-size:.88rem">มี Credentials แล้ว — กดปุ่มด้านล่างเพื่อ Login กับ Google</p>
-          <p class="text-secondary" style="font-size:.8rem">จะเปิดหน้าต่าง Google Login ขึ้นมา เมื่อ Allow แล้วหน้าต่างจะปิดเองอัตโนมัติ</p>
-          <button class="btn btn-primary" onclick="startGoogleLogin(this)">
-            <i class="bi bi-google me-2"></i>Login กับ Google
-          </button>
-          <div id="auth-result" class="mt-3"></div>`;
-      }
-    } catch(e) {
-      document.getElementById('sheets-modal-body').innerHTML =
-        `<div class="text-danger">Error: ${e.message}</div>`;
-    }
-  }
-
-  function startGoogleLogin(btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังเปิด…';
-    const popup = window.open(_ROOT+'/api/sheets/auth', 'google_auth',
-      'width=520,height=640,left=200,top=100');
-    const res = document.getElementById('auth-result');
-    res.innerHTML = '<span class="text-secondary"><i class="bi bi-hourglass-split me-1"></i>รอการยืนยันจาก Google…</span>';
-    // Listen for callback success message
-    const handler = async (e) => {
-      if (e.data === 'sheets_connected') {
-        window.removeEventListener('message', handler);
-        clearInterval(pollInterval);
-        res.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>เชื่อมต่อสำเร็จ!</span>';
-        setTimeout(refreshSheetsModal, 800);
-      }
-    };
-    window.addEventListener('message', handler);
-    // Fallback poll in case popup blocks postMessage
-    const pollInterval = setInterval(async () => {
-      try {
-        if (popup && popup.closed) {
-          clearInterval(pollInterval);
-          window.removeEventListener('message', handler);
-          const r = await fetch(_ROOT+'/api/sheets/status');
-          const d = await r.json();
-          if (d.connected) {
-            res.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>เชื่อมต่อสำเร็จ!</span>';
-            setTimeout(refreshSheetsModal, 800);
-          } else {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-google me-2"></i>Login กับ Google';
-            res.innerHTML = '<span class="text-secondary">ยกเลิกหรือยังไม่เสร็จ</span>';
-          }
-        }
-      } catch(e) {}
-    }, 1000);
-  }
-
-  async function disconnectSheets() {
-    if (!confirm('ยกเลิกการเชื่อมต่อ Google Sheets?')) return;
-    await fetch(_ROOT+'/api/sheets/disconnect', {method:'DELETE'});
-    refreshSheetsModal();
-  }
-
-  // Check Sheets status on page load
-  (async () => {
-    try {
-      const r = await fetch(_ROOT+'/api/sheets/status');
-      const d = await r.json();
-      if (d.connected) {
-        document.getElementById('sheets-status-label').textContent = '✓ Sheets';
-        document.getElementById('btn-sheets').className = 'btn btn-sm btn-outline-success';
-      }
-    } catch(e) {}
-  })();
-
-  async function pushCurrentToSheets(btn) {
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>กำลังส่ง…';
-    try {
-      const r = await fetch(_ROOT+'/api/report/push-sheets', {method:'POST'});
-      const d = await r.json();
-      if (r.ok) {
-        btn.innerHTML = '<i class="bi bi-check me-1"></i>ส่งแล้ว!';
-        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
-        if (d.url) window.open(d.url, '_blank');
-      } else {
-        alert('Error: ' + (d.detail || JSON.stringify(d)));
-        btn.innerHTML = orig; btn.disabled = false;
-      }
-    } catch(e) {
-      alert('Error: '+e.message);
-      btn.innerHTML = orig; btn.disabled = false;
-    }
-  }
-
-  async function pushSavedToSheets(filename, btn) {
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '⏳';
-    try {
-      const r = await fetch(_ROOT+'/api/reports/'+filename+'/push-sheets', {method:'POST'});
-      const d = await r.json();
-      if (r.ok) {
-        btn.innerHTML = '✓';
-        if (d.url) window.open(d.url, '_blank');
-      } else {
-        alert('Error: ' + (d.detail || JSON.stringify(d)));
-        btn.innerHTML = orig; btn.disabled = false;
-      }
-    } catch(e) {
-      alert('Error: '+e.message);
-      btn.innerHTML = orig; btn.disabled = false;
-    }
+  function downloadReportCsv(e) {
+    e.preventDefault();
+    window.location.href = _ROOT + '/api/report/export.csv';
   }
 
   function renderKeywordPreview(raw) {
