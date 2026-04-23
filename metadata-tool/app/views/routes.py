@@ -1349,6 +1349,44 @@ async def get_saved_report(filename: str):
 
 
 
+# ── API: Google Sheets OAuth ──────────────────────────────────────────────────
+
+@router.get("/api/sheets/status")
+async def sheets_status():
+    from app.services.sheets_service import is_connected
+    return {"connected": is_connected()}
+
+
+@router.get("/api/sheets/auth")
+async def sheets_auth():
+    from app.services.sheets_service import get_auth_url
+    try:
+        url = get_auth_url()
+        return {"url": url}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/api/sheets/callback")
+async def sheets_callback(code: str = "", error: str = ""):
+    from fastapi.responses import RedirectResponse
+    from app.services.sheets_service import complete_auth
+    root = settings.APP_ROOT_PATH.rstrip("/")
+    if error or not code:
+        return RedirectResponse(url=f"{root}/?sheets=error&msg={error or 'no_code'}")
+    result = complete_auth(code)
+    if result.get("ok"):
+        return RedirectResponse(url=f"{root}/?sheets=connected")
+    import urllib.parse as _up
+    return RedirectResponse(url=f"{root}/?sheets=error&msg={_up.quote(result.get('error','unknown'))}")
+
+
+@router.delete("/api/sheets/disconnect")
+async def sheets_disconnect():
+    from app.services.sheets_service import _TOKEN_FILE
+    if _TOKEN_FILE.exists():
+        _TOKEN_FILE.unlink()
+    return {"ok": True}
 
 
 # ── API: Push to Mimir ─────────────────────────────────────────────────────────

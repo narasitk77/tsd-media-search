@@ -1107,8 +1107,11 @@
           <div class="text-secondary" style="font-size:.72rem" id="report-generated-at"></div>
         </div>
         <div class="d-flex gap-2 align-items-center">
-          <a href="https://docs.google.com/spreadsheets/d/1UelzdSNpwWfEkU7JThuhf0irTKPJk-1Pvhh1-eub6B0" target="_blank" class="btn btn-outline-success btn-sm" title="เปิด Google Sheet">
-            <i class="bi bi-table me-1"></i>Sheet
+          <span id="sheets-status-badge" class="badge rounded-pill bg-secondary align-middle" style="font-size:.75rem;cursor:pointer;padding:5px 10px" onclick="toggleSheetsConnect()" title="คลิกเพื่อเชื่อมต่อ Google Sheets">
+            <i class="bi bi-table me-1"></i><span id="sheets-status-label">Sheets</span>
+          </span>
+          <a href="https://docs.google.com/spreadsheets/d/1UelzdSNpwWfEkU7JThuhf0irTKPJk-1Pvhh1-eub6B0" target="_blank" class="btn btn-outline-secondary btn-sm py-1 px-2" title="เปิด Google Sheet" style="font-size:.8rem">
+            <i class="bi bi-box-arrow-up-right"></i>
           </a>
           <a id="btn-export-csv" href="#" onclick="downloadReportCsv(event)" class="btn btn-outline-info btn-sm" title="Export CSV">
             <i class="bi bi-download me-1"></i>CSV
@@ -1148,8 +1151,31 @@
     loadAssets();
     loadFolders();
     loadCacheStats();
+    loadSheetsStatus();
     startAutoRefresh();
     document.getElementById('edit-ai-keyword').addEventListener('input', e => renderKeywordPreview(e.target.value));
+
+    // Handle OAuth callback redirect params
+    const _qp = new URLSearchParams(window.location.search);
+    if (_qp.get('sheets') === 'connected') {
+      window.history.replaceState({}, '', window.location.pathname);
+      loadSheetsStatus();
+      // Show success toast using the batch toast element
+      const body = document.getElementById('batch-toast-body');
+      if (body) {
+        body.innerHTML = '✅ <strong>เชื่อมต่อ Google Sheets สำเร็จ</strong> — ทุก batch จะ auto-push ไปยัง Sheet โดยอัตโนมัติ';
+        document.getElementById('batch-toast').style.display = '';
+        setTimeout(() => { document.getElementById('batch-toast').style.display = 'none'; }, 8000);
+      }
+    } else if (_qp.get('sheets') === 'error') {
+      window.history.replaceState({}, '', window.location.pathname);
+      const body = document.getElementById('batch-toast-body');
+      if (body) {
+        body.innerHTML = '✗ <span class="text-danger">Google Sheets auth ล้มเหลว</span>: ' + (_qp.get('msg') || 'ไม่ทราบสาเหตุ');
+        document.getElementById('batch-toast').style.display = '';
+        setTimeout(() => { document.getElementById('batch-toast').style.display = 'none'; }, 10000);
+      }
+    }
   });
 
   function startAutoRefresh() {
@@ -1457,6 +1483,50 @@
     document.getElementById('reanalyze-status').style.display = 'none';
 
     new bootstrap.Modal(document.getElementById('detailModal')).show();
+  }
+
+  // ── Google Sheets Connection ──────────────────────────────────────────
+  async function loadSheetsStatus() {
+    try {
+      const r = await fetch(_ROOT + '/api/sheets/status');
+      const d = await r.json();
+      const badge = document.getElementById('sheets-status-badge');
+      const label = document.getElementById('sheets-status-label');
+      if (!badge) return;
+      if (d.connected) {
+        badge.className = 'badge rounded-pill bg-success align-middle';
+        badge.style.cssText = 'font-size:.75rem;cursor:pointer;padding:5px 10px';
+        badge.title = 'Connected — auto-push เปิดอยู่ (คลิกเพื่อตัดการเชื่อมต่อ)';
+        label.textContent = 'Sheets ✓';
+      } else {
+        badge.className = 'badge rounded-pill bg-secondary align-middle';
+        badge.style.cssText = 'font-size:.75rem;cursor:pointer;padding:5px 10px';
+        badge.title = 'คลิกเพื่อเชื่อมต่อ Google Sheets (auto-push)';
+        label.textContent = 'Sheets';
+      }
+    } catch(e) {}
+  }
+
+  async function toggleSheetsConnect() {
+    try {
+      const r = await fetch(_ROOT + '/api/sheets/status');
+      const d = await r.json();
+      if (d.connected) {
+        if (!confirm('ตัดการเชื่อมต่อ Google Sheets?\n\nบันทึก batch ต่อไปจะไม่ auto-push ไปยัง Sheet')) return;
+        await fetch(_ROOT + '/api/sheets/disconnect', { method: 'DELETE' });
+        loadSheetsStatus();
+      } else {
+        const r2 = await fetch(_ROOT + '/api/sheets/auth');
+        const d2 = await r2.json();
+        if (d2.url) {
+          window.location.href = d2.url;
+        } else {
+          alert('เชื่อมต่อไม่ได้: ' + (d2.detail || 'ไม่ทราบสาเหตุ'));
+        }
+      }
+    } catch(e) {
+      alert('เกิดข้อผิดพลาด: ' + e.message);
+    }
   }
 
   // ── Report ────────────────────────────────────────────────────────────
