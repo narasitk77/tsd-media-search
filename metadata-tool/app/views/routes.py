@@ -218,20 +218,24 @@ async def get_token_stats(db: Session = Depends(get_db)):
 @router.get("/api/folders")
 async def list_folders(db: Session = Depends(get_db)):
     """
-    Return albums grouped by event name extracted from ingest_path.
-    Each unique event = one album pill, even if they share the same folder_id.
+    Return albums grouped by folder_id so each fetched folder URL = one album pill.
     """
-    rows = db.query(Asset.ingest_path).filter(Asset.ingest_path != "").all()
+    rows = db.query(Asset.folder_id, Asset.ingest_path, Asset.context_text).all()
 
-    counts: dict[str, int] = {}
-    for (path,) in rows:
-        key = extract_event_from_path(path) or "—"
-        counts[key] = counts.get(key, 0) + 1
+    folders: dict[str, dict] = {}
+    for folder_id, path, ctx_text in rows:
+        fid = folder_id or "__unknown__"
+        if fid not in folders:
+            event_name = extract_event_from_path(path or "") or (ctx_text or "").split("\n")[0][:40] or fid[:8]
+            folders[fid] = {
+                "name": event_name,
+                "album_key": fid,
+                "count": 0,
+                "context_text": ctx_text or "",
+            }
+        folders[fid]["count"] += 1
 
-    result = sorted(
-        [{"name": name, "album_key": name, "count": cnt} for name, cnt in counts.items()],
-        key=lambda x: x["name"],
-    )
+    result = sorted(folders.values(), key=lambda x: x["name"])
     return result
 
 
@@ -250,8 +254,7 @@ async def list_assets(
     if folder_id != "all":
         q = q.filter(Asset.folder_id == folder_id)
     if album_key != "all":
-        # Filter by event name segment within ingest_path
-        q = q.filter(Asset.ingest_path.contains(album_key))
+        q = q.filter(Asset.folder_id == album_key)
     total = q.count()
     assets = q.offset((page - 1) * per_page).limit(per_page).all()
     return {
@@ -442,24 +445,26 @@ async def get_report(db: Session = Depends(get_db)):
 
 @router.get("/api/album-stats")
 async def album_stats(db: Session = Depends(get_db)):
-    """Return per-album stats: count, done, tokens, cost."""
-    from sqlalchemy import func
+    """Return per-album stats grouped by folder_id."""
     price_in, price_out = _get_pricing()
 
     rows = db.query(
+        Asset.folder_id,
         Asset.ingest_path,
+        Asset.context_text,
         Asset.status,
         Asset.tokens_input,
         Asset.tokens_output,
     ).all()
 
     albums: dict[str, dict] = {}
-    for path, status, ti, to in rows:
-        key = extract_event_from_path(path or "") or "—"
-        if key not in albums:
-            albums[key] = {"name": key, "total": 0, "done": 0, "pending": 0, "error": 0,
+    for folder_id, path, ctx_text, status, ti, to in rows:
+        fid = folder_id or "__unknown__"
+        if fid not in albums:
+            name = extract_event_from_path(path or "") or (ctx_text or "").split("\n")[0][:40] or fid[:8]
+            albums[fid] = {"name": name, "album_key": fid, "total": 0, "done": 0, "pending": 0, "error": 0,
                            "tokens_in": 0.0, "tokens_out": 0.0}
-        a = albums[key]
+        a = albums[fid]
         a["total"] += 1
         if status == "done":
             a["done"] += 1
@@ -488,19 +493,18 @@ class PushAlbumRequest(BaseModel):
 
 @router.post("/api/push/by-album")
 async def push_by_album(body: PushAlbumRequest, db: Session = Depends(get_db)):
-    """Push all done assets in selected albums."""
+    """Push all done assets in selected albums (album_keys = folder_ids)."""
     if not body.album_keys:
         raise HTTPException(status_code=400, detail="album_keys is empty")
 
-    # Collect done asset IDs that belong to selected albums
-    all_done = db.query(Asset).filter(Asset.status == "done").all()
-    selected: list[tuple[str, str]] = []  # (item_id, album_key)
-    for asset in all_done:
-        key = extract_event_from_path(asset.ingest_path or "") or "—"
-        if key in body.album_keys:
-            selected.append((asset.item_id, key))
+    key_set = set(body.album_keys)
+    all_done = db.query(Asset).filter(
+        Asset.status == "done",
+        Asset.folder_id.in_(key_set),
+    ).all()
+    selected = [(a.item_id, a.folder_id) for a in all_done]
     return {"ok": True, "total": len(selected), "item_ids": [s[0] for s in selected],
-            "album_map": {k: v for k, v in selected}}
+            "album_map": {s[0]: s[1] for s in selected}}
 
 
 @router.get("/api/push/by-album/stream")
@@ -880,6 +884,74 @@ async def backfill_proxy(db: Session = Depends(get_db)):
         db.commit()
 
     return {"ok": True, "updated": updated, "total_missing": len(missing)}
+
+
+# ── API: Import individual Mimir items by URL ──────────────────────────────────
+
+_ITEM_UUID_RE = _re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', _re.I)
+
+class ImportItemsRequest(BaseModel):
+    item_urls: List[str]
+    context_text: str = ""
+
+
+@router.post("/api/items/import")
+async def import_items(body: ImportItemsRequest, db: Session = Depends(get_db)):
+    """Import individual Mimir item URLs (or raw item IDs) into the DB as pending."""
+    results = []
+    async with httpx.AsyncClient(timeout=30) as client:
+        for raw_url in body.item_urls:
+            url = raw_url.strip()
+            if not url:
+                continue
+            m = _ITEM_UUID_RE.search(url)
+            if not m:
+                results.append({"url": url, "ok": False, "error": "No item ID (UUID) found"})
+                continue
+            item_id = m.group(0)
+
+            existing = db.query(Asset).filter(Asset.item_id == item_id).first()
+            if existing:
+                results.append({"url": url, "item_id": item_id, "ok": True, "status": "already_exists"})
+                continue
+
+            r = await client.get(
+                f"{settings.MIMIR_BASE_URL}/api/v1/items/{item_id}",
+                headers=await _auth_header(),
+                follow_redirects=True,
+            )
+            if r.status_code != 200:
+                results.append({"url": url, "item_id": item_id, "ok": False, "error": f"Mimir HTTP {r.status_code}"})
+                continue
+
+            item = r.json()
+            fd  = item.get("metadata", {}).get("formData", {})
+            tfd = item.get("technicalMetadata", {}).get("formData", {})
+            db.add(Asset(
+                item_id=item_id,
+                folder_id="__imported__",
+                thumbnail_url=item.get("thumbnail", ""),
+                proxy_url=item.get("proxy", ""),
+                status="pending",
+                title=fd.get("title") or item.get("originalFileName", ""),
+                item_type=item.get("itemType", ""),
+                media_created_on=fd.get("mediaCreatedOn") or fd.get("createdOn", ""),
+                file_type=tfd.get("technical_image_file_type") or item.get("mediaType", ""),
+                width=str(tfd.get("technical_image_width", "")),
+                height=str(tfd.get("technical_image_height", "")),
+                aspect_ratio=tfd.get("technical_media_display_aspect_ratio", ""),
+                filesize_mb=round(item["mediaSize"] / 1048576, 2) if item.get("mediaSize") else None,
+                ingest_path=item.get("ingestSourceFullPath", ""),
+                exif_url=item.get("exifTagsUrl", ""),
+                rights="THE STANDARD/All Rights Reserved",
+                context_text=body.context_text,
+            ))
+            results.append({"url": url, "item_id": item_id, "ok": True, "status": "imported"})
+
+        db.commit()
+
+    imported = sum(1 for r in results if r.get("status") == "imported")
+    return {"ok": True, "imported": imported, "results": results}
 
 
 # ── API: AI Batch (SSE) — รองรับ Gemini และ Claude ────────────────────────────

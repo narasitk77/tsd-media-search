@@ -629,6 +629,26 @@
     </div>
   </div>
 
+  <!-- Individual Image Import -->
+  <div class="card p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <label class="text-secondary small mb-0"><i class="bi bi-link-45deg me-1"></i>นำเข้ารายภาพ (Individual Item URLs)</label>
+      <button class="btn btn-outline-secondary btn-sm py-0 px-2" type="button" data-bs-toggle="collapse" data-bs-target="#import-items-collapse" style="font-size:.72rem">แสดง/ซ่อน</button>
+    </div>
+    <div class="collapse" id="import-items-collapse">
+      <div class="text-secondary small mb-2">วาง Mimir item URL หรือ Item ID (UUID) ทีละบรรทัด — ระบบจะดึงข้อมูลและเพิ่มเป็น album "Imported Items"</div>
+      <textarea id="import-item-urls" class="form-control form-control-sm font-monospace mb-2" rows="4"
+        placeholder="https://apac.mjoll.no/item/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx&#10;https://apac.mjoll.no/item/yyyyyyyy-...&#10;หรือ UUID ตรงๆ"></textarea>
+      <div class="d-flex gap-2 align-items-center">
+        <input type="text" id="import-ctx-text" class="form-control form-control-sm" style="max-width:340px" placeholder="Context (ชื่อบุคคล/งาน) — optional" />
+        <button class="btn btn-outline-primary btn-sm" onclick="importIndividualItems()">
+          <i class="bi bi-box-arrow-in-down me-1"></i>Import Items
+        </button>
+        <span id="import-items-status" class="text-secondary small"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- Action Bar (sticky) -->
   <div id="toolbar-bar" class="mb-3">
   <div class="card p-3">
@@ -1204,6 +1224,8 @@
   }
 
   // ── Folders / Albums ───────────────────────────────────────────────────
+  const _albumNameMap = {};  // folder_id → display name
+
   async function loadFolders() {
     const r = await fetch(_ROOT+'/api/folders');
     const folders = await r.json();
@@ -1214,6 +1236,7 @@
     // Remove old album pills (keep "All Albums")
     [...pills.querySelectorAll('.album-pill:not([data-album="all"])')].forEach(el => el.remove());
     folders.forEach(f => {
+      _albumNameMap[f.album_key] = f.name;
       const btn = document.createElement('button');
       btn.className = 'btn btn-sm btn-outline-secondary album-pill';
       btn.dataset.album = f.album_key;
@@ -1907,6 +1930,31 @@
     }
   }
 
+  // ── Import Individual Items ────────────────────────────────────────────
+  async function importIndividualItems() {
+    const raw = document.getElementById('import-item-urls').value;
+    const ctx = document.getElementById('import-ctx-text').value.trim();
+    const statusEl = document.getElementById('import-items-status');
+    const item_urls = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    if (!item_urls.length) { statusEl.textContent = 'ไม่มี URL'; return; }
+    statusEl.textContent = `กำลังนำเข้า ${item_urls.length} รายการ...`;
+    try {
+      const r = await fetch(_ROOT + '/api/items/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_urls, context_text: ctx }),
+      });
+      const data = await r.json();
+      const ok  = data.results?.filter(x => x.status === 'imported').length || 0;
+      const dup = data.results?.filter(x => x.status === 'already_exists').length || 0;
+      const err = data.results?.filter(x => !x.ok).length || 0;
+      statusEl.innerHTML = `<span class="text-success">นำเข้า ${ok}</span>${dup ? ` · ซ้ำ ${dup}` : ''}${err ? ` · <span class="text-danger">error ${err}</span>` : ''}`;
+      if (ok > 0) { await loadStats(); await loadFolders(); loadAssets(); }
+    } catch(e) {
+      statusEl.textContent = '✗ ' + e.message;
+    }
+  }
+
   // ── Actions ────────────────────────────────────────────────────────────
   function getFolderUrls() {
     return [...document.querySelectorAll('.folder-url-input')]
@@ -2038,7 +2086,7 @@
 
   async function startBatchFromModal() {
     const checked   = [...document.querySelectorAll('.batch-album-chk:checked')];
-    const albumKeys = checked.map(c => _batchAlbumData[+c.value].name);
+    const albumKeys = checked.map(c => _batchAlbumData[+c.value].album_key);
     bootstrap.Modal.getInstance(document.getElementById('batchAlbumModal'))?.hide();
     await startBatch(albumKeys);
   }
@@ -2097,8 +2145,9 @@
         document.getElementById('btn-stop-batch').style.display   = 'none';
         document.getElementById('btn-batch').style.display        = '';
         loadStats(); loadAssets(); loadTokenStats(); loadCacheStats();
-        const albumName = currentAlbumFilter !== 'all' ? currentAlbumFilter : (lastEvent?.current ? '' : '');
-        showBatchToast(d.processed, d.errors, albumName);
+        const albumKey  = currentAlbumFilter !== 'all' ? currentAlbumFilter : '';
+        const albumName = albumKey ? (_albumNameMap[albumKey] || albumKey) : '';
+        showBatchToast(d.processed, d.errors, albumName, albumKey);
       } else if (d.type === 'cancelled') {
         batchDone = true;
         const done = d.processed || 0, errs = d.errors || 0;
@@ -2345,21 +2394,21 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  function showBatchToast(processed, errors, albumName) {
+  function showBatchToast(processed, errors, albumName, albumKey) {
     clearInterval(_progressTimer);
     const body = document.getElementById('batch-toast-body');
     const icon = errors ? '⚠️' : '✅';
-    const errPart = errors ? `<br><span class="text-danger">${errors} error — </span><a href="#" class="text-warning" onclick="setAlbumByName(${JSON.stringify(albumName)});document.getElementById('batch-toast').style.display='none'">ดูใน ${albumName || 'All Albums'}</a>` : '';
+    const label = albumName || 'All Albums';
+    const errPart = errors ? `<br><span class="text-danger">${errors} error — </span><a href="#" class="text-warning" onclick="setAlbumByKey(${JSON.stringify(albumKey)});document.getElementById('batch-toast').style.display='none'">ดูใน ${label}</a>` : '';
     body.innerHTML = `${icon} <strong>AI Batch เสร็จแล้ว</strong> — ${processed} ภาพ ใช้เวลา ${_fmtDuration((Date.now()-_progressStart)/1000)}${errPart}
-      <br><a href="#" class="text-info" onclick="setAlbumByName(${JSON.stringify(albumName)});document.getElementById('batch-toast').style.display='none'">ดูผลลัพธ์</a>`;
+      <br><a href="#" class="text-info" onclick="setAlbumByKey(${JSON.stringify(albumKey)});document.getElementById('batch-toast').style.display='none'">ดูผลลัพธ์</a>`;
     document.getElementById('batch-toast').style.display = '';
-    // Auto-hide after 15s if no errors
     if (!errors) setTimeout(() => { document.getElementById('batch-toast').style.display='none'; }, 15000);
   }
 
-  function setAlbumByName(name) {
-    if (!name) return;
-    const pill = [...document.querySelectorAll('.album-pill')].find(p => p.dataset.album === name);
+  function setAlbumByKey(key) {
+    if (!key) return;
+    const pill = [...document.querySelectorAll('.album-pill')].find(p => p.dataset.album === key);
     if (pill) setAlbumFilter(pill);
     else { currentAlbumFilter = 'all'; loadAssets(); }
   }
@@ -2477,7 +2526,7 @@
       totalCostThb += a.cost_thb || 0;
       const hasWork = a.done > 0;
       return `<tr class="${hasWork ? '' : 'opacity-50'}">
-        <td><input type="checkbox" class="form-check-input push-album-check" data-album="${esc(a.name)}"
+        <td><input type="checkbox" class="form-check-input push-album-check" data-album="${esc(a.album_key)}"
              ${hasWork ? '' : 'disabled'} onchange="updatePushAlbumCount()"></td>
         <td><span class="text-light">${esc(a.name)}</span>
           ${a.error ? `<span class="badge bg-danger ms-1">${a.error} err</span>` : ''}
@@ -2501,7 +2550,7 @@
   function updatePushAlbumCount() {
     const checked = [...document.querySelectorAll('.push-album-check:checked')];
     const totalDone = checked.reduce((sum, el) => {
-      const album = _pushAlbumData.find(a => a.name === el.dataset.album);
+      const album = _pushAlbumData.find(a => a.album_key === el.dataset.album);
       return sum + (album?.done || 0);
     }, 0);
     document.getElementById('push-album-selected-count').textContent =

@@ -421,7 +421,7 @@ def check_rate_limit() -> Optional[str]:
 
 async def run_gemini_batch(album_keys: list = None, cancel_flag: dict = None) -> AsyncGenerator[dict, None]:
     """
-    album_keys: list of event names to process. None / [] = process all pending.
+    album_keys: list of folder_ids to process. None / [] = process all pending.
     """
     db = SessionLocal()
     # Auto-recover assets stuck in "processing" from a previous crashed run
@@ -432,16 +432,10 @@ async def run_gemini_batch(album_keys: list = None, cancel_flag: dict = None) ->
         db.commit()
         logger.info(f"Auto-reset {len(stuck)} stuck 'processing' assets to pending")
 
-    pending_assets = (db.query(Asset)
-                      .filter(Asset.status == "pending")
-                      .order_by(Asset.ingest_path)
-                      .all())
-
-    # Filter by album_keys if provided
-    album_set = set(album_keys) if album_keys else None
-    if album_set:
-        pending_assets = [a for a in pending_assets
-                          if (extract_event_from_path(a.ingest_path or "") or "__ungrouped__") in album_set]
+    q = db.query(Asset).filter(Asset.status == "pending")
+    if album_keys:
+        q = q.filter(Asset.folder_id.in_(set(album_keys)))
+    pending_assets = q.order_by(Asset.ingest_path).all()
 
     # Group by event so cross-asset context sharing works within each event
     event_order: dict[str, list[str]] = {}
@@ -560,6 +554,12 @@ async def run_gemini_batch(album_keys: list = None, cancel_flag: dict = None) ->
                 asset.status        = "done"
                 asset.error_log     = ""
                 db.commit()
+
+                try:
+                    from app.services import vector_service as _vs
+                    _vs.index_asset(asset)
+                except Exception as _ve:
+                    logger.warning(f"Vector index skipped for {asset.item_id[:8]}: {_ve}")
 
                 # Accumulate cross-asset cache for this event (merge, don't replace)
                 existing = event_cache.get(event, "")
