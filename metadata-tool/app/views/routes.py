@@ -266,6 +266,9 @@ async def list_assets(
 async def clear_assets(db: Session = Depends(get_db)):
     if _running["fetch"] or _running["batch"]:
         raise HTTPException(status_code=409, detail="Cannot clear while a task is running")
+    # Auto-save report snapshot before deleting so history is never lost
+    if db.query(Asset).filter(Asset.status == "done").count() > 0:
+        await _save_report_snapshot(db)
     count = db.query(Asset).count()
     db.query(Asset).delete()
     db.commit()
@@ -919,6 +922,133 @@ async def cancel_batch():
     return {"ok": True, "message": "Cancel signal sent"}
 
 
+_REPORTS_DIR = Path(__file__).parent.parent.parent / "data" / "reports"
+_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+async def _save_report_snapshot(db_session) -> Optional[str]:
+    """Save current report as JSON to data/reports/. Returns filename or None on error."""
+    from sqlalchemy import func, case as _case
+    try:
+        price_in, price_out = _get_pricing()
+        provider = settings.AI_PROVIDER.lower()
+        model = settings.ANTHROPIC_MODEL if provider == "claude" else settings.GEMINI_MODEL
+
+        row = db_session.query(
+            func.count(Asset.item_id).label("total"),
+            func.sum(_case((Asset.status == "done",    1), else_=0)).label("done"),
+            func.sum(_case((Asset.status == "pending", 1), else_=0)).label("pending"),
+            func.sum(_case((Asset.status == "error",   1), else_=0)).label("error"),
+            func.sum(Asset.tokens_input).label("tokens_in"),
+            func.sum(Asset.tokens_output).label("tokens_out"),
+            func.min(Asset.processed_at).label("first_at"),
+            func.max(Asset.processed_at).label("last_at"),
+        ).first()
+
+        total_in  = row.tokens_in  or 0
+        total_out = row.tokens_out or 0
+        cost_usd  = (total_in / 1e6) * price_in + (total_out / 1e6) * price_out
+        elapsed_sec = None
+        if row.first_at and row.last_at:
+            elapsed_sec = int((row.last_at - row.first_at).total_seconds())
+
+        rows = db_session.query(
+            Asset.ingest_path, Asset.status,
+            Asset.tokens_input, Asset.tokens_output, Asset.processed_at,
+        ).all()
+
+        albums: dict = {}
+        day_map: dict = {}
+        for path, status, ti, to, proc_at in rows:
+            key = extract_event_from_path(path or "") or "—"
+            if key not in albums:
+                albums[key] = {"folder": key, "total": 0, "done": 0, "error": 0,
+                               "tokens_in": 0.0, "tokens_out": 0.0}
+            a = albums[key]
+            a["total"] += 1
+            if status == "done":
+                a["done"] += 1
+                a["tokens_in"]  += ti or 0
+                a["tokens_out"] += to or 0
+            elif status == "error":
+                a["error"] += 1
+            if proc_at and status == "done":
+                day = proc_at.strftime("%Y-%m-%d")
+                if day not in day_map:
+                    day_map[day] = {"date": day, "done": 0, "tokens": 0, "cost_usd": 0.0}
+                day_map[day]["done"] += 1
+                day_map[day]["tokens"] += int((ti or 0) + (to or 0))
+                day_map[day]["cost_usd"] = round(
+                    day_map[day]["cost_usd"]
+                    + ((ti or 0) / 1e6) * price_in
+                    + ((to or 0) / 1e6) * price_out, 6)
+
+        by_folder = []
+        for a in sorted(albums.values(), key=lambda x: x["folder"]):
+            c = (a["tokens_in"] / 1e6) * price_in + (a["tokens_out"] / 1e6) * price_out
+            by_folder.append({
+                "folder": a["folder"], "total": a["total"],
+                "done": a["done"], "error": a["error"],
+                "tokens_total": int(a["tokens_in"] + a["tokens_out"]),
+                "cost_usd": round(c, 5), "cost_thb": round(c * 34, 3),
+            })
+
+        by_day = []
+        for d in sorted(day_map.values(), key=lambda x: x["date"], reverse=True)[:60]:
+            d["cost_thb"] = round(d["cost_usd"] * 34, 4)
+            by_day.append(d)
+
+        report = {
+            "generated_at": datetime.utcnow().isoformat(),
+            "provider": provider,
+            "model": model,
+            "price_input_per_m":  price_in,
+            "price_output_per_m": price_out,
+            "summary": {
+                "total_assets":    row.total   or 0,
+                "total_done":      row.done    or 0,
+                "total_pending":   row.pending or 0,
+                "total_error":     row.error   or 0,
+                "total_folders":   len(albums),
+                "tokens_in":       int(total_in),
+                "tokens_out":      int(total_out),
+                "tokens_total":    int(total_in + total_out),
+                "cost_usd":        round(cost_usd, 5),
+                "cost_thb":        round(cost_usd * 34, 4),
+                "first_processed": row.first_at.isoformat() if row.first_at else None,
+                "last_processed":  row.last_at.isoformat()  if row.last_at  else None,
+                "elapsed_sec":     elapsed_sec,
+            },
+            "by_folder": by_folder,
+            "by_day": by_day,
+        }
+
+        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        filename = f"report_{ts}.json"
+        (_REPORTS_DIR / filename).write_text(json.dumps(report, ensure_ascii=False, indent=2))
+        logger.info(f"Report saved: {filename}")
+
+        # Push to Google Sheets if authenticated
+        from app.services.sheets_service import is_connected, push_report_to_sheets
+        if is_connected():
+            import asyncio as _asyncio
+            try:
+                sheets_result = await _asyncio.get_event_loop().run_in_executor(
+                    None, push_report_to_sheets, report
+                )
+                if sheets_result.get("ok"):
+                    logger.info(f"Report pushed to Sheets: {sheets_result.get('url')}")
+                else:
+                    logger.warning(f"Sheets push failed: {sheets_result.get('error')}")
+            except Exception as se:
+                logger.warning(f"Sheets push error: {se}")
+
+        return filename
+    except Exception as e:
+        logger.warning(f"Report auto-save failed: {e}")
+        return None
+
+
 @router.get("/api/batch/stream")
 async def batch_stream():
     provider = settings.AI_PROVIDER.lower()
@@ -932,6 +1062,14 @@ async def batch_stream():
                 # Reset flag before yielding done so next POST /api/batch doesn't get 409
                 if event.get("type") in ("done", "rate_limit", "cancelled"):
                     _running["batch"] = False
+                if event.get("type") == "done":
+                    db = SessionLocal()
+                    try:
+                        fname = await _save_report_snapshot(db)
+                        if fname:
+                            event["report_saved"] = fname
+                    finally:
+                        db.close()
                 yield f"data: {json.dumps(event)}\n\n"
                 await asyncio.sleep(0)
                 if event.get("type") in ("rate_limit", "cancelled"):
@@ -944,6 +1082,136 @@ async def batch_stream():
 
     return StreamingResponse(generate(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ── API: Google Sheets auth ───────────────────────────────────────────────────
+
+@router.get("/api/sheets/status")
+async def sheets_status():
+    from app.services.sheets_service import is_connected
+    return {
+        "connected":       is_connected(),
+        "has_credentials": bool(settings.GOOGLE_OAUTH_CLIENT_ID and settings.GOOGLE_OAUTH_CLIENT_SECRET),
+        "sheet_id":        settings.GOOGLE_SHEET_ID,
+        "redirect_uri":    settings.GOOGLE_REDIRECT_URI,
+    }
+
+
+@router.get("/api/sheets/auth")
+async def sheets_auth():
+    """Redirect browser to Google OAuth2 login page."""
+    from fastapi.responses import RedirectResponse
+    if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+        raise HTTPException(status_code=400,
+            detail="ยังไม่ได้ตั้ง GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET ใน .env")
+    from app.services.sheets_service import get_auth_url
+    return RedirectResponse(get_auth_url())
+
+
+@router.get("/api/sheets/callback")
+async def sheets_callback(code: str = "", error: str = ""):
+    """Google OAuth2 callback — exchange code for tokens then redirect to UI."""
+    from fastapi.responses import HTMLResponse
+    if error:
+        return HTMLResponse(f"""<html><body style="font-family:sans-serif;background:#111;color:#eee;padding:2rem">
+            <h3>❌ Authorization failed: {error}</h3>
+            <p><a href="javascript:window.close()" style="color:#aaa">ปิดหน้าต่างนี้</a></p>
+            </body></html>""")
+    from app.services.sheets_service import complete_auth
+    result = complete_auth(code)
+    if result["ok"]:
+        root = settings.APP_ROOT_PATH.rstrip("/")
+        return HTMLResponse(f"""<html><body style="font-family:sans-serif;background:#111;color:#eee;padding:2rem">
+            <h3>✅ เชื่อมต่อ Google Sheets สำเร็จ!</h3>
+            <p>ปิดหน้าต่างนี้แล้วกลับไปที่แอป</p>
+            <script>
+              if (window.opener) {{
+                window.opener.postMessage('sheets_connected', '*');
+                window.close();
+              }} else {{
+                setTimeout(() => window.location.href = '{root}/', 2000);
+              }}
+            </script>
+            </body></html>""")
+    return HTMLResponse(f"""<html><body style="font-family:sans-serif;background:#111;color:#eee;padding:2rem">
+        <h3>❌ เชื่อมต่อไม่สำเร็จ</h3>
+        <pre style="color:#f88">{result.get("error","")}</pre>
+        <p><a href="javascript:window.close()" style="color:#aaa">ปิดหน้าต่างนี้</a></p>
+        </body></html>""", status_code=400)
+
+
+@router.delete("/api/sheets/disconnect")
+async def sheets_disconnect():
+    from app.services.sheets_service import _TOKEN_FILE
+    if _TOKEN_FILE.exists():
+        _TOKEN_FILE.unlink()
+    return {"ok": True}
+
+
+# ── API: Saved reports ─────────────────────────────────────────────────────────
+
+@router.get("/api/reports")
+async def list_reports():
+    """List all auto-saved batch report snapshots."""
+    files = sorted(_REPORTS_DIR.glob("report_*.json"), reverse=True)
+    result = []
+    for f in files:
+        try:
+            data = json.loads(f.read_text())
+            result.append({
+                "filename": f.name,
+                "generated_at": data.get("generated_at"),
+                "provider": data.get("provider"),
+                "model": data.get("model"),
+                "total_assets": data.get("summary", {}).get("total_assets", 0),
+                "total_done": data.get("summary", {}).get("total_done", 0),
+                "cost_thb": data.get("summary", {}).get("cost_thb", 0),
+                "total_folders": data.get("summary", {}).get("total_folders", 0),
+            })
+        except Exception:
+            pass
+    return result
+
+
+@router.get("/api/reports/{filename}")
+async def get_saved_report(filename: str):
+    """Get a specific saved report by filename."""
+    p = _REPORTS_DIR / filename
+    if not p.exists() or not p.name.startswith("report_") or not p.name.endswith(".json"):
+        raise HTTPException(status_code=404, detail="Report not found")
+    return json.loads(p.read_text())
+
+
+
+@router.post("/api/reports/{filename}/push-sheets")
+async def push_report_to_sheets_endpoint(filename: str):
+    """Push a saved report to Google Sheets manually."""
+    if not settings.GOOGLE_SERVICE_ACCOUNT_JSON:
+        raise HTTPException(status_code=400, detail="GOOGLE_SERVICE_ACCOUNT_JSON not configured")
+    p = _REPORTS_DIR / filename
+    if not p.exists() or not p.name.startswith("report_") or not p.name.endswith(".json"):
+        raise HTTPException(status_code=404, detail="Report not found")
+    report = json.loads(p.read_text())
+    import asyncio as _asyncio
+    from app.services.sheets_service import push_report_to_sheets
+    result = await _asyncio.get_event_loop().run_in_executor(None, push_report_to_sheets, report)
+    if not result.get("ok"):
+        raise HTTPException(status_code=502, detail=result.get("error", "Sheets push failed"))
+    return result
+
+
+@router.post("/api/report/push-sheets")
+async def push_current_report_to_sheets(db: Session = Depends(get_db)):
+    """Push current live report to Google Sheets."""
+    from app.services.sheets_service import is_connected
+    if not is_connected():
+        raise HTTPException(status_code=400,
+            detail="ยังไม่ได้เชื่อมต่อ Google Sheets — ไปที่ /api/sheets/auth ก่อน")
+    fname = await _save_report_snapshot(db)
+    if not fname:
+        raise HTTPException(status_code=500, detail="Failed to generate report")
+    return {"ok": True, "filename": fname,
+            "url": f"https://docs.google.com/spreadsheets/d/{settings.GOOGLE_SHEET_ID}"}
 
 
 # ── API: Push to Mimir ─────────────────────────────────────────────────────────
@@ -1125,17 +1393,30 @@ async def vector_index_one(item_id: str, db: Session = Depends(get_db)):
 
 @router.post("/api/vector/index-all")
 async def vector_index_all(db: Session = Depends(get_db)):
-    """Index assets ทั้งหมดที่ status=done เข้า Vector DB."""
-    assets = db.query(Asset).filter(Asset.status == "done").all()
-    indexed = errors = 0
-    for asset in assets:
-        try:
-            if _vs.index_asset(asset):
-                indexed += 1
-        except Exception as e:
-            errors += 1
-            logger.warning(f"Vector index error for {asset.item_id}: {e}")
-    return {"ok": True, "indexed": indexed, "errors": errors, "total": len(assets)}
+    """Index assets ทั้งหมดที่ status=done เข้า Vector DB (SSE stream)."""
+    from app.database import SessionLocal as _SL
+    asset_ids = [a.item_id for a in db.query(Asset).filter(Asset.status == "done").all()]
+    total = len(asset_ids)
+
+    async def generate():
+        indexed = errors = 0
+        for i, item_id in enumerate(asset_ids):
+            _db = _SL()
+            try:
+                asset = _db.query(Asset).filter(Asset.item_id == item_id).first()
+                if asset and _vs.index_asset(asset):
+                    indexed += 1
+            except Exception as e:
+                errors += 1
+                logger.warning(f"Vector index error for {item_id}: {e}")
+            finally:
+                _db.close()
+            yield f"data: {json.dumps({'processed': i+1, 'indexed': indexed, 'errors': errors, 'total': total})}\n\n"
+            await asyncio.sleep(0)
+        yield f"data: {json.dumps({'type': 'done', 'indexed': indexed, 'errors': errors, 'total': total})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @router.delete("/api/vector/{item_id}")
