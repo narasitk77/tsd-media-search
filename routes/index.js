@@ -106,6 +106,48 @@ router.post('/admin/cache/refresh-folders', admin.requireAdmin, function (req, r
   res.json({ ok: true, message: 'Folder cache invalidated — rebuilding in background' });
 });
 
+// Debug: proxy raw Mimir API response (admin only) — use to inspect /folders, /search?folderId=... etc.
+router.get('/admin/debug/mimir', admin.requireAdmin, async function (req, res) {
+  const rawPath = (req.query.path || 'folders').replace(/[^a-zA-Z0-9/_\-.]/g, '');
+  const params  = Object.assign({}, req.query);
+  delete params.path;
+  try {
+    const data = await mimirModel.debugMimirApiPath(rawPath, params);
+    res.json({ ok: true, path: rawPath, params, data });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message, status: e.response && e.response.status, detail: e.response && e.response.data });
+  }
+});
+
+// Browse by Mimir folder UUID (bypasses ingestSourceFullPath requirement)
+router.get('/browse/mimir-folder', async function (req, res) {
+  const folderId  = (req.query.folderId || '').trim();
+  const folderName = (req.query.name || folderId).trim();
+  const mediaType = ['all', 'image', 'video'].includes(req.query.type) ? req.query.type : 'all';
+  const page      = Math.max(1, parseInt(req.query.page, 10) || 1);
+  if (!folderId) return res.redirect('/browse');
+
+  try {
+    const data = await mimirModel.browseFolderByMimirId(folderId, { mediaType, page, pageSize: 48 });
+    const tree  = await mimirModel.getFolderTree();
+    res.render('browse', {
+      title:      `${folderName} — Mimir Media Search`,
+      mode:       'folder',
+      tree,
+      folder:     null,
+      breadcrumb: [{ name: folderName, path: null }],
+      subFolders: [],
+      results:    data.items,
+      mediaType,
+      page:       data.page,
+      totalPages: data.totalPages,
+      total:      data.total,
+    });
+  } catch (e) {
+    res.status(500).send('Error loading folder: ' + e.message);
+  }
+});
+
 router.get('/proxy/thumbnail/:id', function (req, res, next) {
   if (!SAFE_ID.test(req.params.id)) return res.status(400).end();
   next();

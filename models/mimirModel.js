@@ -510,11 +510,68 @@ async function getRecentFolders(days) {
   } catch (_) { return []; }
 }
 
+// ── Mimir Folder API (uses /folders endpoint) ─────────────────
+
+// Fetch all Mimir folders in one call (paginated if needed)
+async function _fetchMimirFolders() {
+  const allFolders = [];
+  let from = 0;
+  const batch = 500;
+  while (true) {
+    const r = await api.get('/folders', { params: { itemsPerPage: batch, from } }).catch(() => null);
+    if (!r) break;
+    const items = (r.data._embedded && r.data._embedded.collection) || r.data.items || [];
+    if (!items.length) break;
+    allFolders.push(...items);
+    const total = r.data.totalAcrossPages || r.data.total || 0;
+    from += items.length;
+    if (from >= total) break;
+  }
+  return allFolders;
+}
+
+// Browse by Mimir folder ID — queries search API with folderId param
+async function browseFolderByMimirId(folderId, { mediaType = 'all', page = 1, pageSize = 48 } = {}) {
+  let allMedia = [];
+  let scanned  = 0;
+  let apiTotal = 0;
+  while (scanned < MAX_SCAN) {
+    const r = await api.get('/search', { params: { folderId, itemsPerPage: FETCH_BATCH, from: scanned } }).catch(() => null);
+    if (!r) break;
+    const batch = (r.data._embedded && r.data._embedded.collection) || [];
+    if (!batch.length) break;
+    apiTotal = r.data.totalAcrossPages || r.data.total || 0;
+    for (const raw of batch) {
+      const mtype = (raw.itemType || '').toLowerCase();
+      if (!MEDIA_TYPES.has(mtype)) continue;
+      allMedia.push(normaliseItem(raw));
+    }
+    scanned += batch.length;
+    if (scanned >= apiTotal) break;
+  }
+  if (mediaType !== 'all') allMedia = allMedia.filter(i => i.mediaType === mediaType);
+  const start = (page - 1) * pageSize;
+  return {
+    items:      allMedia.slice(start, start + pageSize),
+    total:      allMedia.length,
+    apiTotal,   fetched: allMedia.length,
+    page,       pageSize,
+    totalPages: Math.max(1, Math.ceil(allMedia.length / pageSize)),
+    exhausted:  true,
+    mode:       'mimir-folder-id',
+  };
+}
+
+// Raw Mimir API probe for admin debugging
+async function debugMimirApiPath(path, params) {
+  const r = await api.get(`/${path}`, { params });
+  return r.data;
+}
+
 // ── Folder tree + per-folder asset cache (one shared scan) ────
 //
-// Both the tree and folder contents are built in a single API sweep.
-// All subsequent browseFolderAssets / browseFolderItemUrls calls
-// are served from cache — zero extra API calls.
+// Tries Mimir /folders API first to get the real folder structure.
+// Falls back to building tree from ingestSourceFullPath if folders API fails.
 //
 const FOLDER_TREE_CACHE_TTL = 10 * 60 * 1000; // 10 min
 let folderTreeCache    = null;
@@ -527,6 +584,23 @@ async function _buildFolderCaches() {
   const assetsMap    = new Map(); // directFolderPath → normaliseItem[]
   const BATCH        = 500;
   const PARALLEL     = 5; // concurrent requests per round
+
+  // ── Step 0: try Mimir /folders API for complete folder structure ─
+  let mimirFolderMap = null; // id → { id, name, parentId }
+  try {
+    const raw = await _fetchMimirFolders();
+    if (raw.length > 0) {
+      mimirFolderMap = {};
+      for (const f of raw) {
+        const id       = f.id || f.folderId;
+        const name     = f.name || f.folderName || id;
+        const parentId = f.parentFolderId || f.parentId || null;
+        if (id) mimirFolderMap[id] = { id, name, parentId };
+      }
+    }
+  } catch (_) {
+    mimirFolderMap = null;
+  }
 
   // ── Step 1: get true total ─────────────────────────────────
   const r0       = await api.get('/search', { params: { itemsPerPage: 1, from: 0 } });
@@ -542,10 +616,21 @@ async function _buildFolderCaches() {
   const offsets = [];
   for (let i = 0; i < apiTotal; i += BATCH) offsets.push(i);
 
+  // folderId → item[] (for Mimir-ID-based folders)
+  const mimirFolderAssets = {}; // id → normaliseItem[]
+
   function processRaw(raw) {
     const mtype      = (raw.itemType || '').toLowerCase();
     const sourcePath = raw.ingestSourceFullPath || '';
     const parts      = sourcePath.split('/').filter(Boolean);
+
+    // Track by Mimir folder ID if available (catches items with missing/short paths)
+    const rawFolderId = raw.folderId || raw.parentFolderId || null;
+    if (rawFolderId && MEDIA_TYPES.has(mtype)) {
+      if (!mimirFolderAssets[rawFolderId]) mimirFolderAssets[rawFolderId] = [];
+      mimirFolderAssets[rawFolderId].push(normaliseItem(raw));
+    }
+
     if (parts.length < 2) return;
 
     // Count ALL item types for the folder tree (matches Mimir's own view)
@@ -573,6 +658,38 @@ async function _buildFolderCaches() {
       if (!r) continue;
       const batch = (r.data._embedded && r.data._embedded.collection) || [];
       batch.forEach(processRaw);
+    }
+  }
+
+  // ── Step 3: merge Mimir folder API into tree (if available) ─
+  // Build path for each Mimir folder by walking up the parent chain
+  if (mimirFolderMap) {
+    function buildMimirPath(id, visited = new Set()) {
+      if (visited.has(id)) return null; // cycle guard
+      visited.add(id);
+      const f = mimirFolderMap[id];
+      if (!f) return null;
+      if (!f.parentId || !mimirFolderMap[f.parentId]) return f.name;
+      const parentPath = buildMimirPath(f.parentId, visited);
+      return parentPath ? `${parentPath}/${f.name}` : f.name;
+    }
+
+    for (const [folderId, f] of Object.entries(mimirFolderMap)) {
+      const fp = buildMimirPath(folderId);
+      if (!fp) continue;
+      f._path = fp; // cache computed path
+
+      // Add to folderCounts if not already there (from ingestSourceFullPath scan)
+      if (!folderCounts[fp]) {
+        const assets = mimirFolderAssets[folderId] || [];
+        folderCounts[fp] = assets.length;
+      }
+
+      // Merge assets into assetsMap
+      const assets = mimirFolderAssets[folderId] || [];
+      if (assets.length > 0 && !assetsMap.has(fp)) {
+        assetsMap.set(fp, assets);
+      }
     }
   }
 
@@ -682,4 +799,36 @@ function invalidateFolderCache() {
   folderTreeCacheTime = 0;
 }
 
-module.exports = { searchAssets, getAssetById, getRawAsset, getThumbnailUrl, getVttContent, getStats, getRecentFolders, getFolderTree, browseFolderAssets, browseFolderItemUrls, invalidateFolderCache };
+// ── Search folders by name/path (returns flat list of matching nodes) ──
+async function searchFolders(query, { limit = 12 } = {}) {
+  if (!query || !query.trim()) return [];
+  await _ensureFolderCaches();
+  if (!folderTreeCache) return [];
+
+  const q = query.trim().toLowerCase();
+  const results = [];
+
+  function walk(nodes) {
+    for (const node of nodes) {
+      const nameMatch = node.name.toLowerCase().includes(q);
+      const pathMatch = node.path.toLowerCase().includes(q);
+      if (nameMatch || pathMatch) results.push(node);
+      if (node.children && node.children.length) walk(node.children);
+    }
+  }
+  walk(folderTreeCache);
+
+  // Sort: exact name match first, then name contains, then path contains
+  results.sort((a, b) => {
+    const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+    const ae = an === q, be = bn === q;
+    if (ae !== be) return ae ? -1 : 1;
+    const as = an.startsWith(q), bs = bn.startsWith(q);
+    if (as !== bs) return as ? -1 : 1;
+    return a.path.localeCompare(b.path);
+  });
+
+  return results.slice(0, limit);
+}
+
+module.exports = { searchAssets, searchFolders, getAssetById, getRawAsset, getThumbnailUrl, getVttContent, getStats, getRecentFolders, getFolderTree, browseFolderAssets, browseFolderByMimirId, browseFolderItemUrls, invalidateFolderCache, debugMimirApiPath };

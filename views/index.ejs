@@ -330,6 +330,42 @@ var isSemantic = typeof semantic !== 'undefined' && !!semantic;
   </div>
 <% } %>
 
+<% if (typeof matchingFolders !== 'undefined' && matchingFolders && matchingFolders.length > 0) { %>
+<div class="folder-results">
+  <div class="folder-results-header">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <path d="M1.5 4.5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1v6a1 1 0 01-1 1H2.5a1 1 0 01-1-1V4.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+    </svg>
+    โฟลเดอร์ที่เกี่ยวข้อง
+  </div>
+  <div class="folder-results-list">
+    <% matchingFolders.forEach(function(f) {
+      var segs = f.path.split('/');
+      var folderName = segs[segs.length - 1];
+      var parentPath = segs.length > 1 ? segs.slice(0, -1).join(' / ') : '';
+    %>
+      <a href="/browse/folder?path=<%= encodeURIComponent(f.path) %>" class="folder-result-card">
+        <div class="folder-result-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M2 8a2 2 0 012-2h5l2 2h9a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="folder-result-info">
+          <% if (parentPath) { %>
+            <div class="folder-result-parent"><%= parentPath %></div>
+          <% } %>
+          <div class="folder-result-name"><%= folderName %></div>
+          <div class="folder-result-count"><%= f.count.toLocaleString() %> รายการ</div>
+        </div>
+        <svg class="folder-result-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    <% }); %>
+  </div>
+</div>
+<% } %>
+
 <% if (results !== null) { %>
   <div class="results-header">
     <% if (results.length > 0) { %>

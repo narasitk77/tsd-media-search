@@ -45,6 +45,7 @@ async function index(req, res) {
     pageSize:          24,
     stats,
     recentFolders,
+    matchingFolders:   [],
     error:             null,
   });
 }
@@ -74,16 +75,19 @@ async function search(req, res) {
   const semantic         = req.query.semantic === '1';
 
   try {
-    const data = await mimirModel.searchAssets({
-      searchString:    q,
-      searchTitle, searchPeople, searchDescription,
-      searchTranscript, searchLabels, searchMetadata,
-      searchFile, searchDetectedText,
-      mediaType, page, pageSize,
-      dateFrom, dateTo, durationMin, durationMax,
-      locationFilter, sortBy, sortOrder,
-      semantic,
-    });
+    const [data, matchingFolders] = await Promise.all([
+      mimirModel.searchAssets({
+        searchString:    q,
+        searchTitle, searchPeople, searchDescription,
+        searchTranscript, searchLabels, searchMetadata,
+        searchFile, searchDetectedText,
+        mediaType, page, pageSize,
+        dateFrom, dateTo, durationMin, durationMax,
+        locationFilter, sortBy, sortOrder,
+        semantic,
+      }),
+      q ? mimirModel.searchFolders(q) : Promise.resolve([]),
+    ]);
 
     // Build a display query label for the results header
     const displayQuery = [q, searchTitle, searchPeople, searchDescription,
@@ -117,6 +121,7 @@ async function search(req, res) {
       dateFrom, dateTo, durationMin, durationMax,
       locationFilter, sortBy, sortOrder, pageSize,
       displayQuery, semantic,
+      matchingFolders,
       stats: null,
       error: null,
     });
@@ -138,7 +143,7 @@ async function search(req, res) {
       searchFile, searchDetectedText,
       dateFrom, dateTo, durationMin, durationMax,
       locationFilter, sortBy, sortOrder, pageSize,
-      displayQuery: q, semantic, stats: null, error: msg,
+      displayQuery: q, semantic, matchingFolders: [], stats: null, error: msg,
     });
   }
 }
