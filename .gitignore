@@ -2,5 +2,12 @@ node_modules/
 .env
 data/sessions.db
 data/activity.db
+data/qdrant/
+venv/
 *.log
 .DS_Store
+
+# Local clones of standalone metadata-tool repo (not part of this project)
+metadata-tool/mimir-metadata-tool/
+metadata-tool/mimir-metadata-tool-1/
+metadata-tool/mimir-deploy-log.csv

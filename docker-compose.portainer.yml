@@ -1,0 +1,116 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Portainer Stack — TSD Media Search
+# ใช้ GHCR images ที่ถูก build จาก GitHub Actions แล้ว (ไม่ใช้ build context)
+#
+# วิธี deploy บน Portainer:
+#   1) Stacks → Add stack → ตั้งชื่อ "tsd-media-search"
+#   2) Build method: Repository
+#        Repository URL:        https://github.com/narasitk77/tsd-media-search
+#        Repository reference:  refs/heads/main
+#        Compose path:          docker-compose.portainer.yml
+#   3) Environment variables — ใส่ค่าจาก .env (อย่างน้อย):
+#        SESSION_SECRET, MIMIR_*, GOOGLE_*, ADMIN_EMAILS,
+#        APP_PORT (เช่น 8766), POSTGRES_PASSWORD
+#   4) ถ้า image ของคุณเป็น private package บน GHCR ให้สร้าง Registry credential
+#      บน Portainer ก่อน (Registries → Add → Custom → ghcr.io + GH PAT)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  app:
+    image: ghcr.io/narasitk77/tsd-media-search:latest
+    container_name: tsd-media-search-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8766}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      SESSION_SECRET: ${SESSION_SECRET}
+      MIMIR_BASE_URL: ${MIMIR_BASE_URL:-https://apac.mjoll.no/api/v1}
+      MIMIR_USERNAME: ${MIMIR_USERNAME}
+      MIMIR_PASSWORD: ${MIMIR_PASSWORD}
+      MIMIR_COGNITO_USER_POOL_ID: ${MIMIR_COGNITO_USER_POOL_ID}
+      MIMIR_COGNITO_CLIENT_ID: ${MIMIR_COGNITO_CLIENT_ID}
+      MIMIR_COGNITO_OIDC_TOKEN_ENDPOINT: ${MIMIR_COGNITO_OIDC_TOKEN_ENDPOINT}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@thestandard.co}
+      METADATA_TOOL_URL: "http://metadata-tool:8000"
+      QDRANT_URL: "http://qdrant:6333"
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-mimir_assets}
+    volumes:
+      - app_data:/app/data
+    depends_on:
+      - metadata-tool
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  metadata-tool:
+    image: ghcr.io/narasitk77/tsd-media-search-metadata-tool:latest
+    container_name: tsd-media-search-metadata-tool
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      APP_ROOT_PATH: "/ai-tool"
+      QDRANT_URL: "http://qdrant:6333"
+      DATABASE_URL: "postgresql://mimir:${POSTGRES_PASSWORD:-mimir_secret}@postgres:5432/mimir_metadata"
+    volumes:
+      - metadata_data:/app/data
+    depends_on:
+      qdrant:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/stats')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tsd-media-search-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mimir_metadata
+      POSTGRES_USER: mimir
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mimir_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mimir -d mimir_metadata"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: tsd-media-search-qdrant
+    restart: unless-stopped
+    expose:
+      - "6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/6333 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  app_data:
+    driver: local
+  metadata_data:
+    driver: local
+  postgres_data:
+    driver: local
+  qdrant_data:
+    driver: local
