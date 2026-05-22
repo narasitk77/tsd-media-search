@@ -1,5 +1,14 @@
 [
   {
+    "version": "2.9.1",
+    "date": "2026-05-22",
+    "title": "Fix — Transcript ค้างข้ามคลิปในโมดอล",
+    "entries": [
+      { "type": "fixed", "text": "แก้บัค transcript ของคลิปก่อนหน้าค้างอยู่ในโมดอลเมื่อเปิดคลิปใหม่ (openModal() ไม่ได้ล้าง .modal-transcript ใน .modal-info)" },
+      { "type": "fixed", "text": "กัน race condition: ถ้าผู้ใช้สลับคลิปก่อน fetch VTT/asset เสร็จ ผลของคลิปเก่าจะไม่ไปแสดงในคลิปใหม่ (เพิ่ม request token check)" }
+    ]
+  },
+  {
     "version": "2.9.0",
     "date": "2026-04-22",
     "title": "Folder Browser — Tree View + Download ZIP",
