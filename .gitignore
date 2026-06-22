@@ -11,3 +11,6 @@ venv/
 metadata-tool/mimir-metadata-tool/
 metadata-tool/mimir-metadata-tool-1/
 metadata-tool/mimir-deploy-log.csv
+
+# runtime user data — never commit
+data/users.json

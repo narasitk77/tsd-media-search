@@ -1,5 +1,13 @@
 [
   {
+    "version": "2.9.1",
+    "date": "2026-05-18",
+    "title": "แก้บั๊กการแสดงผลวีดิโอใน popup",
+    "entries": [
+      { "type": "fixed", "text": "วีดิโอใน popup แสดงเป็นแถบเล็กกลางจอ (ทั้งแนวตั้งและแนวนอน) — ตั้งกรอบสูงคงที่ + object-fit: contain ให้ letterbox พอดีทุกสัดส่วน" }
+    ]
+  },
+  {
     "version": "2.0.0",
     "date": "2026-04-07",
     "title": "YouTube-Style UI + Recent Updates Landing Page",
