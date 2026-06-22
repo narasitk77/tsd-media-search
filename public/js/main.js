@@ -346,8 +346,11 @@ function renderModal(asset, reqToken) {
 
         var section = document.createElement('div');
         section.className = 'modal-transcript';
-        section.innerHTML = '<div class="modal-transcript-title">Transcript</div>' +
-          '<div id="transcriptList">' + listHtml + '</div>';
+        // Collapsed by default — click summary to expand (native <details>)
+        section.innerHTML = '<details class="transcript-details">' +
+          '<summary class="modal-transcript-title">Transcript · ' + cues.length + ' บรรทัด</summary>' +
+          '<div id="transcriptList">' + listHtml + '</div>' +
+          '</details>';
 
         var info = document.querySelector('.modal-info');
         if (info) info.appendChild(section);
@@ -374,7 +377,8 @@ function renderModal(asset, reqToken) {
               if (isActive && !el.classList.contains('transcript-cue--active')) {
                 el.classList.add('transcript-cue--active');
                 var infoEl = el.closest('.modal-info');
-                if (infoEl) {
+                // el.offsetParent is null when transcript is collapsed — skip scroll then
+                if (infoEl && el.offsetParent !== null) {
                   var elTop    = el.offsetTop - infoEl.offsetTop;
                   var elBottom = elTop + el.offsetHeight;
                   var vTop     = infoEl.scrollTop;
