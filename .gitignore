@@ -4,3 +4,6 @@ data/sessions.db
 data/activity.db
 *.log
 .DS_Store
+
+# runtime user data — never commit
+data/users.json

@@ -195,20 +195,25 @@ var modalTitle    = document.getElementById('modalTitle');
 var modalMeta     = document.getElementById('modalMeta');
 var modalActions  = document.getElementById('modalActions');
 
+var _modalReqToken = 0;
 function openModal(assetId) {
   if (!modal) return;
+  var myToken = ++_modalReqToken;
   modal.removeAttribute('hidden');
   document.body.style.overflow = 'hidden';
   modalMedia.innerHTML   = '<div class="spinner"></div>';
   modalTitle.textContent = '';
   modalMeta.innerHTML    = '';
   modalActions.innerHTML = '';
+  var _oldTranscript = document.querySelector('.modal-info .modal-transcript');
+  if (_oldTranscript) _oldTranscript.remove();
 
   fetch('/asset/' + encodeURIComponent(assetId))
     .then(function (r) { return r.json(); })
     .then(function (data) {
+      if (myToken !== _modalReqToken) return;
       if (!data.success) throw new Error(data.message);
-      renderModal(data.asset);
+      renderModal(data.asset, myToken);
     })
     .catch(function (err) {
       modalMedia.innerHTML =
@@ -216,7 +221,7 @@ function openModal(assetId) {
     });
 }
 
-function renderModal(asset) {
+function renderModal(asset, reqToken) {
   // ── Media area ──────────────────────────────────────────────
   if (asset.mediaType === 'video' && asset.previewUrl) {
     var _proxyUrl = asset.previewUrl;
@@ -328,6 +333,7 @@ function renderModal(asset) {
     fetch('/proxy/vtt/' + encodeURIComponent(asset.id))
       .then(function (r) { if (!r.ok) throw new Error('no vtt'); return r.text(); })
       .then(function (vttText) {
+        if (reqToken !== _modalReqToken) return;
         var cues = _parseVtt(vttText);
         if (!cues.length) return;
 
