@@ -8,3 +8,4 @@ data/*.db
 .git
 .gitignore
 PROJECT_SUMMARY.md
+presentation

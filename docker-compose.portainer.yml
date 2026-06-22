@@ -1,6 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Portainer Stack — TSD Media Search
-# ใช้ GHCR images ที่ถูก build จาก GitHub Actions แล้ว (ไม่ใช้ build context)
+# - app: ใช้ GHCR image ที่ build จาก GitHub Actions แล้ว
+# - metadata-tool: Portainer build จาก ./metadata-tool context
 #
 # วิธี deploy บน Portainer:
 #   1) Stacks → Add stack → ตั้งชื่อ "tsd-media-search"
@@ -51,7 +52,9 @@ services:
       start_period: 15s
 
   metadata-tool:
-    image: ghcr.io/narasitk77/tsd-media-search-metadata-tool:latest
+    build:
+      context: ./metadata-tool
+      dockerfile: Dockerfile
     container_name: tsd-media-search-metadata-tool
     restart: unless-stopped
     expose:
