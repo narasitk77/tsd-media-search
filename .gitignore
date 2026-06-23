@@ -7,3 +7,6 @@ data/activity.db
 
 # runtime user data — never commit
 data/users.json
+
+# migration export data — keep out of git (large + may be sensitive)
+migration/out/
