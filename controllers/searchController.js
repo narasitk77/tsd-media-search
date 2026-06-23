@@ -1,6 +1,7 @@
 'use strict';
 
 const mimirModel = require('../models/mimirModel');
+const driveModel = require('../models/driveModel');
 const logModel   = require('../models/logModel');
 
 const VALID_SORT_BY    = new Set(['date', 'title']);
@@ -75,7 +76,9 @@ async function search(req, res) {
   const semantic         = req.query.semantic === '1';
 
   try {
-    const [data, matchingFolders] = await Promise.all([
+    // Drive keyword query (only meaningful with a free-text q); shown on page 1.
+    const driveQuery = q || searchTitle || searchTranscript || searchPeople || searchDescription;
+    const [data, matchingFolders, driveItems] = await Promise.all([
       mimirModel.searchAssets({
         searchString:    q,
         searchTitle, searchPeople, searchDescription,
@@ -87,7 +90,18 @@ async function search(req, res) {
         semantic,
       }),
       q ? mimirModel.searchFolders(q) : Promise.resolve([]),
+      (page === 1 && driveQuery && driveModel.isEnabled())
+        ? driveModel.searchDrive(driveQuery, { mediaType, limit: pageSize })
+        : Promise.resolve([]),
     ]);
+
+    // Surface our Shared Drive matches first (tagged source:'drive'); Mimir items keep source 'mimir'.
+    if (driveItems.length) {
+      (data.items || []).forEach(it => { if (!it.source) it.source = 'mimir'; });
+      data.items  = [...driveItems, ...(data.items || [])];
+      data.total  = (data.total || 0) + driveItems.length;
+      data.driveCount = driveItems.length;
+    }
 
     // Build a display query label for the results header
     const displayQuery = [q, searchTitle, searchPeople, searchDescription,
@@ -151,7 +165,10 @@ async function search(req, res) {
 // ── Thumbnail proxy ────────────────────────────────────────────
 async function thumbnailProxy(req, res) {
   try {
-    const url = await mimirModel.getThumbnailUrl(req.params.id);
+    const id = req.params.id;
+    const url = id.startsWith('drive:')
+      ? await driveModel.getThumbnailUrl(id.slice(6))
+      : await mimirModel.getThumbnailUrl(id);
     res.redirect(302, url);
   } catch (_) {
     res.redirect(302, '/images/placeholder.svg');
@@ -183,8 +200,11 @@ async function assetDetail(req, res) {
       return res.json({ success: true, allKeys: Object.keys(raw), raw });
     }
 
-    const asset = await mimirModel.getAssetById(req.params.id);
-    logModel.log(req.user && req.user.email, 'view', { assetId: req.params.id, title: asset.title, mediaType: asset.mediaType });
+    const id = req.params.id;
+    const asset = id.startsWith('drive:')
+      ? await driveModel.getAssetById(id.slice(6))
+      : await mimirModel.getAssetById(id);
+    logModel.log(req.user && req.user.email, 'view', { assetId: id, title: asset.title, mediaType: asset.mediaType, source: asset.source || 'mimir' });
     res.json({ success: true, asset });
   } catch (err) {
     console.error('[assetDetail] error:', err.message);

@@ -1114,6 +1114,23 @@ a:hover { text-decoration: underline; }
 .card-type-badge--image { background: rgba(0,102,204,.85); color: #fff; }
 .card-type-badge--video { background: rgba(220,38,38,.85);  color: #fff; }
 
+/* Source badge — item came from our Google Drive (top-right of thumb) */
+.card-source-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 50px;
+  background: rgba(16,134,84,.92);
+  color: #fff;
+  letter-spacing: .03em;
+}
+
 .card-body {
   padding: 10px 12px 12px;
   display: flex;

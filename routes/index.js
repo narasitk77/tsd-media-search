@@ -17,8 +17,9 @@ const gdocs  = require('../services/googleDocsService');
 
 const router = express.Router();
 
-// Safe ID pattern: alphanumeric + hyphens/underscores, max 100 chars
-const SAFE_ID = /^[a-zA-Z0-9_-]{1,100}$/;
+// Safe ID pattern: alphanumeric + hyphens/underscores, max 100 chars.
+// Optional `drive:` prefix marks a Google Drive file id (Drive search results).
+const SAFE_ID = /^(drive:)?[a-zA-Z0-9_-]{1,100}$/;
 // Google Doc ID pattern
 const SAFE_DOC_ID = /^[a-zA-Z0-9_-]{20,100}$/;
 
