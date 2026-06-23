@@ -61,7 +61,8 @@ passport.use(new GoogleStrategy(
       email,
       name:    profile.displayName,
       photo:   profile.photos && profile.photos[0] && profile.photos[0].value,
-      _gToken: accessToken,  // extracted to session in OAuth callback; not stored in JWT
+      _gToken:   accessToken,   // extracted to session in OAuth callback; not stored in JWT
+      _gRefresh: refreshToken,  // for Drive token auto-refresh (present on offline consent)
     });
   }
 ));

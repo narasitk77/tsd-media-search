@@ -10,6 +10,14 @@ const VALID_PAGE_SIZES = new Set([24, 48, 96]);
 
 function str(v) { return (v || '').trim(); }
 
+// Per-user Google Drive auth from the session (granted at login).
+function driveAuth(req) {
+  return {
+    accessToken:  req.session && req.session.gToken,
+    refreshToken: req.session && req.session.gRefresh,
+  };
+}
+
 // ── Home ──────────────────────────────────────────────────────
 async function index(req, res) {
   let stats = { images: 0, videos: 0, total: 0 };
@@ -91,7 +99,7 @@ async function search(req, res) {
       }),
       q ? mimirModel.searchFolders(q) : Promise.resolve([]),
       (page === 1 && driveQuery && driveModel.isEnabled())
-        ? driveModel.searchDrive(driveQuery, { mediaType, limit: pageSize })
+        ? driveModel.searchDrive(driveQuery, { mediaType, limit: pageSize, auth: driveAuth(req) })
         : Promise.resolve([]),
     ]);
 
@@ -167,7 +175,7 @@ async function thumbnailProxy(req, res) {
   try {
     const id = req.params.id;
     const url = id.startsWith('drive:')
-      ? await driveModel.getThumbnailUrl(id.slice(6))
+      ? await driveModel.getThumbnailUrl(id.slice(6), driveAuth(req))
       : await mimirModel.getThumbnailUrl(id);
     res.redirect(302, url);
   } catch (_) {
@@ -202,7 +210,7 @@ async function assetDetail(req, res) {
 
     const id = req.params.id;
     const asset = id.startsWith('drive:')
-      ? await driveModel.getAssetById(id.slice(6))
+      ? await driveModel.getAssetById(id.slice(6), driveAuth(req))
       : await mimirModel.getAssetById(id);
     logModel.log(req.user && req.user.email, 'view', { assetId: id, title: asset.title, mediaType: asset.mediaType, source: asset.source || 'mimir' });
     res.json({ success: true, asset });
