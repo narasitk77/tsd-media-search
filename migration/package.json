@@ -1,0 +1,17 @@
+{
+  "name": "tsd-migration-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-contained Mimir→Google Drive migration scripts (kept out of the main app deps).",
+  "scripts": {
+    "manifest": "node export-mimir.js manifest",
+    "enrich": "node export-mimir.js enrich",
+    "transcripts": "node export-mimir.js transcripts",
+    "upload": "node upload-to-drive.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0"
+  }
+}

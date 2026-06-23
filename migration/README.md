@@ -40,9 +40,35 @@ node migration/export-mimir.js transcripts
 
 > `out/` ถูก gitignore — เป็นข้อมูล export ไม่ commit เข้า repo เก็บไว้ที่ปลอดภัย (NAS/bucket) เป็น source of truth ระหว่าง migration
 
-## ยังขาด (ต้องตั้งค่าฝั่ง Google ก่อน — ทำต่อไม่ได้จนกว่าจะมี)
-- **Service Account + Domain-Wide Delegation** (เข้าถึง Shared Drive)
-- **Shared Drive** ปลายทาง (ระวัง 500k ไฟล์/ไดรฟ์ → 373k ต้องเผื่อแบ่ง)
-- ยืนยัน **พื้นที่ Workspace** พอ (ดู inventory-report.json ก่อน)
+## Phase 2 — อัปขึ้น Google Drive (`upload-to-drive.js`) ✅ โค้ดพร้อมแล้ว
 
-จากนั้น (Phase 2–4): อัปต้นฉบับขึ้น Shared Drive (ใส่ Mimir ID ใน `appProperties`) → index ผ่าน AI Metadata Tool (Postgres + Qdrant + Gemini) → เปลี่ยน data layer ในเว็บให้ค้นจาก index + ดึงสื่อจาก Drive
+สตรีมต้นฉบับจาก Mimir เข้า Drive ตรงๆ (ไม่ต้อง stage 14TB ลงเครื่อง) + ใส่ Mimir ID ใน `appProperties` + เก็บ mapping → **resume ได้**
+
+**ต้องตั้ง env ก่อน 3 ตัว (รอจาก IT admin):**
+```bash
+GOOGLE_SA_KEY_FILE=/path/service-account.json   # service account JSON
+DRIVE_SHARED_DRIVE_ID=0A...                      # Shared Drive ปลายทาง
+GOOGLE_DWD_SUBJECT=you@thestandard.co            # (ออปชัน) impersonate ผ่าน DWD ถ้า SA ไม่ได้เป็นสมาชิก Shared Drive
+# DRIVE_DEST_FOLDER_ID=...                        # (ออปชัน) โฟลเดอร์ย่อยใน Shared Drive
+```
+
+```bash
+cd migration && npm install            # ติดตั้ง googleapis (แยกจากแอปหลัก)
+node upload-to-drive.js --limit 20      # smoke test 20 ไฟล์ก่อน
+node upload-to-drive.js                 # อัปเต็ม (resume ได้) · --refresh ถ้า URL หมดอายุ
+#   → out/drive-mapping.jsonl : mimirId → driveFileId
+```
+
+> ⚠️ presigned URL จาก Mimir **หมดอายุ** — รัน upload ขณะ Mimir ยังเปิดอยู่ (หรือใส่ `--refresh` ให้ดึง URL ใหม่ต่อไฟล์)
+> ⚠️ Shared Drive จำกัด **500k ไฟล์/ไดรฟ์** — 373k ใส่ได้ตัวเดียวแต่เผื่อโตควรแบ่ง (แก้ `DRIVE_SHARED_DRIVE_ID` รันหลายรอบต่อไดรฟ์)
+
+## ยังต้องการจาก IT admin เพื่อรัน Phase 2
+1. **Service Account JSON** + เปิด **Domain-Wide Delegation** (scope `drive`)
+2. **Shared Drive ปลายทาง** (+ เพิ่ม SA หรือ subject เป็นสมาชิก)
+3. ยืนยัน **พื้นที่ ~14TB** (ดู `out/inventory-report.json`)
+
+## Phase 3–4 (หลัง Phase 2 มีข้อมูลใน Drive แล้ว)
+- **Phase 3 — Index:** ชี้ AI Metadata Tool (Postgres + Qdrant + Gemini) ให้อ่านจาก Drive (Changes API) + merge metadata จาก `items-full.jsonl` (map ด้วย Mimir ID ใน appProperties) + ใส่ transcript จาก `out/transcripts/`
+- **Phase 4 — เปลี่ยน data layer เว็บ:** แทน `models/mimirModel.js` ให้ค้นจาก index เรา + ดึง thumbnail/วิดีโอจาก Drive (frontend เดิมใช้ต่อ)
+
+> Phase 3–4 ต้องรอ Drive มีไฟล์จริงก่อน (Phase 2 เสร็จ) ถึงจะ build + test ได้ — ไม่เขียนล่วงหน้าแบบเดาเพราะจะ test ไม่ได้
