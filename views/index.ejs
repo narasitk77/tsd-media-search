@@ -455,6 +455,12 @@ var isSemantic = typeof semantic !== 'undefined' && !!semantic;
             <div class="card-type-badge card-type-badge--<%= asset.mediaType %>">
               <%= asset.mediaType === 'video' ? 'Video' : 'Image' %>
             </div>
+            <% if (asset.source === 'drive') { %>
+              <div class="card-source-badge" title="จาก Google Drive ของเรา">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M7.7 2.3 1.2 13.6l3.2 5.6 6.6-11.4zM22.8 13.6 16.3 2.3h-6.6l6.5 11.3zM5.3 20.9h13.4l3.2-5.6H8.5z"/></svg>
+                Drive
+              </div>
+            <% } %>
             <% if (isSemantic && asset.score != null) { %>
               <div class="card-score-badge"><%= Math.round(asset.score * 100) %>%</div>
             <% } %>

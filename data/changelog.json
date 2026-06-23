@@ -1,5 +1,15 @@
 [
   {
+    "version": "2.10.0",
+    "date": "2026-06-23",
+    "title": "ค้นหาเจอไฟล์ใน Google Drive ของเราด้วย",
+    "entries": [
+      { "type": "added", "text": "เวลาค้นหา ระบบจะดึงไฟล์รูป/วีดิโอที่ตรงคำค้นจาก Shared Drive ของเรามาแสดงรวมกับผล Mimir (ติด badge 'Drive' สีเขียว แสดงก่อน)" },
+      { "type": "added", "text": "วีดิโอจาก Drive เล่นผ่าน preview ในป็อปอัป + ปุ่ม 'เปิดใน Google Drive' · รูปแสดงเต็มได้เลย" },
+      { "type": "improved", "text": "เชื่อม Drive ผ่าน service account (scope drive.readonly) — ปิดอยู่โดยค่าเริ่มต้น เปิดด้วย DRIVE_SEARCH_ENABLED=1 + GOOGLE_SA_KEY_FILE (ไม่ตั้ง = ทำงานเหมือนเดิมทุกอย่าง)" }
+    ]
+  },
+  {
     "version": "2.9.2",
     "date": "2026-06-22",
     "title": "ปรับ popup ดูสื่อ — พรีวิวใหญ่ขึ้น + transcript พับเก็บได้",

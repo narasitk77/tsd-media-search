@@ -223,7 +223,12 @@ function openModal(assetId) {
 
 function renderModal(asset, reqToken) {
   // ── Media area ──────────────────────────────────────────────
-  if (asset.mediaType === 'video' && asset.previewUrl) {
+  if (asset.previewIsIframe && asset.previewUrl) {
+    // Google Drive video — plays via Drive's preview iframe
+    modalMedia.innerHTML =
+      '<iframe src="' + escHtml(asset.previewUrl) + '" allow="autoplay; fullscreen" allowfullscreen ' +
+      'style="width:100%;height:100%;border:0;background:#000"></iframe>';
+  } else if (asset.mediaType === 'video' && asset.previewUrl) {
     var _proxyUrl = asset.previewUrl;
     modalMedia.innerHTML =
       '<video id="mv" controls autoplay muted playsinline style="width:100%;max-height:55vh;background:#000">' +
@@ -312,8 +317,11 @@ function renderModal(asset, reqToken) {
     var label = 'ดาวน์โหลด Hi-res';
     actions += '<a href="' + escHtml(dlUrl) + '" target="_blank" rel="noopener" class="btn btn--primary">' + label + '</a>';
   }
-  if (asset.previewUrl && asset.previewUrl !== dlUrl) {
+  if (asset.previewUrl && asset.previewUrl !== dlUrl && !asset.previewIsIframe) {
     actions += '<a href="' + escHtml(asset.previewUrl) + '" target="_blank" rel="noopener" class="btn btn--ghost">ดาวน์โหลด Low-res</a>';
+  }
+  if (asset.source === 'drive' && asset.externalUrl) {
+    actions += '<a href="' + escHtml(asset.externalUrl) + '" target="_blank" rel="noopener" class="btn btn--ghost">เปิดใน Google Drive</a>';
   }
   modalActions.innerHTML = actions;
 
