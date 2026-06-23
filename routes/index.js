@@ -43,16 +43,21 @@ router.get('/auth/google',
       'https://www.googleapis.com/auth/documents',
     ],
     hd: 'thestandard.co',
+    accessType: 'offline',     // request a refresh token so Drive search survives token expiry
   })
 );
 
 router.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login?error=fail' }),
   function (req, res) {
-    // Save Google access token in session (not in JWT); used for Google Docs API
+    // Save Google access token in session (not in JWT); used for Google Docs API + Drive search
     if (req.user._gToken) {
       req.session.gToken = req.user._gToken;
       delete req.user._gToken;
+    }
+    if (req.user._gRefresh) {
+      req.session.gRefresh = req.user._gRefresh;
+      delete req.user._gRefresh;
     }
     const record = userModel.upsertOnLogin(req.user);
     if (record.status === 'suspended') {

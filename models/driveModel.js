@@ -2,17 +2,20 @@
 /**
  * Google Drive search — surfaces media from our Shared Drive alongside Mimir.
  *
- * Auth: service account (set GOOGLE_SA_KEY_FILE). Optional Domain-Wide
- * Delegation subject (GOOGLE_DWD_SUBJECT) if the SA isn't a Shared Drive member.
+ * Two auth paths (per-user preferred, service account as fallback):
+ *   1. Per-user OAuth — uses the logged-in user's Google token (already granted
+ *      `drive.metadata.readonly` at login). No service account needed. The
+ *      controller passes { accessToken, refreshToken } from the session.
+ *   2. Service account — set GOOGLE_SA_KEY_FILE (+ optional GOOGLE_DWD_SUBJECT).
  *
  * Config (.env):
- *   DRIVE_SEARCH_ENABLED=1
- *   GOOGLE_SA_KEY_FILE=/path/service-account.json
- *   DRIVE_SHARED_DRIVE_ID=0A...        # scope to one Shared Drive (recommended)
- *   GOOGLE_DWD_SUBJECT=you@thestandard.co   # optional
+ *   DRIVE_SEARCH_ENABLED=1            # master switch (works for either path)
+ *   DRIVE_SHARED_DRIVE_ID=0A...       # scope to one Shared Drive (recommended)
+ *   GOOGLE_SA_KEY_FILE=/path/sa.json  # only for the service-account path
+ *   GOOGLE_DWD_SUBJECT=you@thestandard.co
  *
- * If not configured, every function no-ops (search returns []) so the app runs
- * exactly as before.
+ * Disabled or no usable auth → every function no-ops (search returns []), so the
+ * app runs exactly as before and Drive never breaks the primary Mimir search.
  */
 const fs = require('fs');
 const { google } = require('googleapis');
@@ -20,24 +23,47 @@ const { google } = require('googleapis');
 const SHARED_DRIVE_ID = process.env.DRIVE_SHARED_DRIVE_ID || '';
 const KEY_FILE        = process.env.GOOGLE_SA_KEY_FILE || '';
 const DWD_SUBJECT     = process.env.GOOGLE_DWD_SUBJECT || '';
+const SCOPES          = ['https://www.googleapis.com/auth/drive.readonly'];
 
 function isEnabled() {
-  return process.env.DRIVE_SEARCH_ENABLED === '1' && !!KEY_FILE && fs.existsSync(KEY_FILE);
+  return process.env.DRIVE_SEARCH_ENABLED === '1';
 }
 
-let _drive = null;
-function client() {
-  if (_drive) return _drive;
+// ── Auth clients ──────────────────────────────────────────────
+let _saDrive = null;
+function saClient() {
+  if (!KEY_FILE || !fs.existsSync(KEY_FILE)) return null;
+  if (_saDrive) return _saDrive;
   const auth = new google.auth.GoogleAuth({
     keyFile: KEY_FILE,
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+    scopes: SCOPES,
     clientOptions: DWD_SUBJECT ? { subject: DWD_SUBJECT } : {},
   });
-  _drive = google.drive({ version: 'v3', auth });
-  return _drive;
+  _saDrive = google.drive({ version: 'v3', auth });
+  return _saDrive;
 }
 
-// Escape a user term for the Drive `q` grammar (single-quoted strings).
+// Per-request client built from the logged-in user's Google token.
+function userClient(auth) {
+  if (!auth || !auth.accessToken) return null;
+  const o = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_CALLBACK_URL
+  );
+  o.setCredentials({
+    access_token:  auth.accessToken,
+    refresh_token: auth.refreshToken || undefined, // enables auto-refresh when present
+  });
+  return google.drive({ version: 'v3', auth: o });
+}
+
+// Prefer the user's own access; fall back to the service account if configured.
+function resolveClient(auth) {
+  return userClient(auth) || saClient();
+}
+
+// ── Helpers ───────────────────────────────────────────────────
 function esc(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
 function mediaTypeOf(mime) {
@@ -47,7 +73,6 @@ function mediaTypeOf(mime) {
   return null;
 }
 
-// Drive file → the app's normalised item shape (id prefixed `drive:`)
 function toItem(f) {
   const mt = mediaTypeOf(f.mimeType);
   const vmeta = f.videoMediaMetadata || {};
@@ -90,38 +115,56 @@ function listParams(q, pageSize) {
   return p;
 }
 
+// ── Search ────────────────────────────────────────────────────
 /**
- * Keyword search across the Shared Drive. Returns [] when disabled or on error
- * (Drive must never break the primary Mimir search).
+ * Keyword search across the Shared Drive. Returns [] when disabled, no auth, or
+ * on error. Tries `fullText` (broad) and falls back to `name` (works even with
+ * the metadata-only scope).
  */
-async function searchDrive(query, { mediaType = 'all', limit = 24 } = {}) {
+async function searchDrive(query, { mediaType = 'all', limit = 24, auth } = {}) {
   if (!isEnabled() || !query || !query.trim()) return [];
-  const clauses = ['(mimeType contains \'image/\' or mimeType contains \'video/\')', 'trashed = false'];
-  clauses.push(`fullText contains '${esc(query.trim())}'`);
-  if (mediaType === 'image') clauses[0] = 'mimeType contains \'image/\'';
-  if (mediaType === 'video') clauses[0] = 'mimeType contains \'video/\'';
+  const drive = resolveClient(auth);
+  if (!drive) return [];
+
+  const term = esc(query.trim());
+  const typeClause = mediaType === 'image'
+    ? "mimeType contains 'image/'"
+    : mediaType === 'video'
+      ? "mimeType contains 'video/'"
+      : "(mimeType contains 'image/' or mimeType contains 'video/')";
+
+  const run = async (textClause) => {
+    const q = `${typeClause} and trashed = false and ${textClause}`;
+    const r = await drive.files.list(listParams(q, limit));
+    return (r.data.files || []).filter(f => mediaTypeOf(f.mimeType)).map(toItem);
+  };
+
   try {
-    const r = await client().files.list(listParams(clauses.join(' and '), limit));
-    const files = (r.data.files || []);
-    const items = [];
-    for (const f of files) { if (mediaTypeOf(f.mimeType)) items.push(toItem(f)); }
-    return items;
-  } catch (e) {
-    console.warn('[driveModel] search failed:', e.message);
-    return [];
+    return await run(`fullText contains '${term}'`);
+  } catch (e1) {
+    try {
+      return await run(`name contains '${term}'`); // metadata-scope-safe fallback
+    } catch (e2) {
+      console.warn('[driveModel] search failed:', e2.message);
+      return [];
+    }
   }
 }
 
 // Fresh thumbnail URL for a Drive file (thumbnailLink is short-lived).
-async function getThumbnailUrl(fileId) {
-  const r = await client().files.get({ fileId, fields: 'thumbnailLink', supportsAllDrives: true });
+async function getThumbnailUrl(fileId, auth) {
+  const drive = resolveClient(auth);
+  if (!drive) throw new Error('drive not available');
+  const r = await drive.files.get({ fileId, fields: 'thumbnailLink', supportsAllDrives: true });
   if (r.data.thumbnailLink) return r.data.thumbnailLink;
   throw new Error('no thumbnail');
 }
 
 // Full detail for the modal.
-async function getAssetById(fileId) {
-  const r = await client().files.get({
+async function getAssetById(fileId, auth) {
+  const drive = resolveClient(auth);
+  if (!drive) throw new Error('drive not available');
+  const r = await drive.files.get({
     fileId,
     fields: `id,name,mimeType,size,createdTime,modifiedTime,thumbnailLink,webViewLink,webContentLink,videoMediaMetadata,imageMediaMetadata`,
     supportsAllDrives: true,
