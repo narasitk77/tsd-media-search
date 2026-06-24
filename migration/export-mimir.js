@@ -197,10 +197,14 @@ async function transcripts() {
   let n = 0, failed = 0;
   await pool(todo, 8, async (t) => {
     try {
-      const res = await withRetry(() => axios.get(t.url, { responseType: 'text', timeout: 15000 }), `vtt ${t.id}`);
+      // Re-fetch a FRESH vttUrl — stored presigned S3 links expire during long runs.
+      const item = await withRetry(() => api.get(`/items/${t.id}`).then(r => r.data), `item ${t.id}`);
+      const url = item.vttUrl;
+      if (!url) { failed++; return; }
+      const res = await withRetry(() => axios.get(url, { responseType: 'text', timeout: 15000 }), `vtt ${t.id}`);
       fs.writeFileSync(path.join(F.transcripts, `${t.id}.vtt`), res.data);
     } catch (e) { failed++; }
-    if (++n % 500 === 0) console.log(`  vtt ${n.toLocaleString()}/${todo.length.toLocaleString()} (failed ${failed})`);
+    if (++n % 50 === 0) console.log(`  vtt ${n.toLocaleString()}/${todo.length.toLocaleString()} (failed ${failed})`);
   });
   console.log(`✓ transcripts: +${n.toLocaleString()} (failed ${failed})`);
 }
